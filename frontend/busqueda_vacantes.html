@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Buscar vacantes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/CSS/vacantes.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1 class="brand">ManPower</h1>
+      <nav>
+        <a href="/busqueda_vacantes.html" class="active">Vacantes</a>
+        <a href="/perfil_candidato.html">Mi perfil</a>
+        <button id="logoutBtn" class="link">Salir</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="filters card">
+      <div class="filters-row">
+        <div class="field">
+          <label>Palabra clave</label>
+          <input id="q" type="text" placeholder="Puesto, empresa, tecnología…" />
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select id="estado"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label>Municipio</label>
+          <select id="municipio"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label>Empresa</label>
+          <input id="empresa" type="text" placeholder="Opcional" />
+        </div>
+        <div class="field">
+          <label>Rango salarial (mín)</label>
+          <input id="salarioMin" type="number" min="0" step="1000" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>Rango salarial (máx)</label>
+          <input id="salarioMax" type="number" min="0" step="1000" placeholder="∞" />
+        </div>
+      </div>
+      <div class="filters-actions">
+        <button id="btnBuscar" class="btn-primary">Buscar</button>
+        <button id="btnLimpiar" class="btn-light">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="results">
+      <div id="stats" class="stats"></div>
+      <div id="listaVacantes" class="cards-grid"></div>
+      <div class="pagination">
+        <button id="prevPage" class="btn-light" disabled>« Anterior</button>
+        <span id="pageInfo" class="page-info">Página 1</span>
+        <button id="nextPage" class="btn-light" disabled>Siguiente »</button>
+      </div>
+    </section>
+  </main>
+
+  <template id="vacanteCardTpl">
+    <article class="card vac-card">
+      <div class="vac-header">
+        <h3 class="vac-title"></h3>
+        <span class="vac-empresa"></span>
+      </div>
+      <div class="vac-body">
+        <div class="vac-meta">
+          <span class="pill pill-loc"></span>
+          <span class="pill pill-sal"></span>
+        </div>
+        <p class="vac-desc"></p>
+      </div>
+      <div class="vac-actions">
+        <button class="btn-primary btn-postular">Postularme</button>
+        <button class="btn-light btn-detalles">Detalles</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="/Js/vacantes.js"></script>
+</body>
+</html>

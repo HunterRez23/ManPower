@@ -3,69 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <title>Perfil del Candidato</title>
-  <!-- antes: /frontend/CSS/perfil.css -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/CSS/perfil.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-  <div class="perfil-container">
-    <h2>Perfil del Candidato</h2>
+  <div class="page">
+    <h1 class="page-title">Perfil del Candidato</h1>
 
-    <div class="perfil-steps">
-      <!-- 1) Datos personales -->
-      <section class="step">
-        <div class="step-header active">
-          <span class="dot"></span>
+    <div class="cards-grid">
+      <!-- Card 1: Datos personales -->
+      <section class="card">
+        <div class="card-header">
+          <span class="dot dot-active"></span>
           <h3>Datos personales</h3>
         </div>
-        <div class="step-body">
-          <label>Nombre</label>
-          <input type="text" id="nombre" readonly />
-          <label>Apellido</label>
-          <input type="text" id="apellido" readonly />
-          <label>Email</label>
-          <input type="text" id="email" readonly />
+        <div class="card-body grid-1">
+          <label class="field">
+            <span>Nombre</span>
+            <input type="text" id="nombre" />
+          </label>
+          <label class="field">
+            <span>Apellido</span>
+            <input type="text" id="apellido" />
+          </label>
+
+          <label class="field">
+            <span>CURP</span>
+            <input type="text" id="curp" maxlength="18" />
+          </label>
+          <label class="field">
+            <span>Teléfono</span>
+            <input type="tel" id="telefono" />
+          </label>
+
+          <label class="field col-1">
+            <span>Email</span>
+            <input type="email" id="email" readonly />
+          </label>
+
+          <label class="field col-1">
+            <span>Dirección</span>
+            <textarea id="direccion" rows="1" placeholder="Calle, número, colonia"></textarea>
+          </label>
         </div>
       </section>
 
-      <!-- 2) Currículum -->
-      <section class="step">
-        <div class="step-header">
-          <span class="dot hollow"></span>
-          <h3>Currículum vitae</h3>
+      <!-- Card 2: Preferencias -->
+      <section class="card">
+        <div class="card-header">
+          <span class="dot"></span>
+          <h3>Preferencias de empleo</h3>
         </div>
-        <div class="step-body">
-          <label>Currículum (PDF)</label>
-          <input type="file" id="cv" accept=".pdf" />
-          <label>Certificados (PDF/JPG/PNG) — múltiples</label>
-          <input type="file" id="certificados" multiple accept=".pdf,.jpg,.png" />
+        <div class="card-body grid-1">
+          <label class="field col-1">
+            <span>Puesto de preferencia</span>
+            <input type="text" id="puesto_preferencia" />
+          </label>
+
+          <label class="field">
+            <span>Estado</span>
+            <select id="estado">
+              <option value="">Selecciona estado</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Municipio</span>
+            <select id="municipio">
+              <option value="">Selecciona municipio</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <!-- Card 3: Documentos -->
+      <section class="card">
+        <div class="card-header">
+          <span class="dot"></span>
+          <h3>Currículum y certificados</h3>
+        </div>
+        <div class="card-body">
+          <label class="field">
+            <span>Currículum (PDF)</span>
+            <input type="file" id="cv" accept=".pdf" />
+          </label>
+
+          <label class="field">
+            <span>Certificados (PDF/JPG/PNG) — múltiples</span>
+            <input type="file" id="certificados" multiple accept=".pdf,.jpg,.jpeg,.png" />
+          </label>
+
           <ul id="lista-uploads" class="upload-list"></ul>
-        </div>
-      </section>
-
-      <!-- 3) Activación -->
-      <section class="step">
-        <div class="step-header">
-          <span class="dot hollow"></span>
-          <h3>Activación</h3>
-        </div>
-        <div class="step-body">
-          <label>Puesto de preferencia</label>
-          <input type="text" id="puesto_preferencia" />
-          <label>Ubicación (Estado → Municipio)</label>
-          <select id="estado">
-            <option value="">Selecciona estado</option>
-          </select>
-          <select id="municipio">
-            <option value="">Selecciona municipio</option>
-          </select>
         </div>
       </section>
     </div>
 
-    <button id="guardarPerfil">Guardar Perfil</button>
+    <div class="actions" style="margin-top:18px;">
+      <button id="guardarPerfil" class="btn-primary">
+        Guardar Perfil
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+    </div>
   </div>
 
-  <!-- antes: /frontend/Js/perfil.js -->
   <script type="module" src="/Js/perfil.js"></script>
 </body>
 </html>

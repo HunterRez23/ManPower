@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard Empresa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/CSS/empresa.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1 class="brand">ManPower – Empresa</h1>
+      <nav>
+        <a href="/dashboard_empresa.html" class="active">Dashboard</a>
+        <button id="logoutBtn" class="link">Salir</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="tabs card">
+      <button class="tab-btn active" data-tab="vacantesTab">Mis vacantes</button>
+      <button class="tab-btn" data-tab="nuevaTab">Nueva vacante</button>
+      <button class="tab-btn" data-tab="postulacionesTab">Postulaciones</button>
+    </div>
+
+    <!-- Mis vacantes -->
+    <section id="vacantesTab" class="tab-content show">
+      <div class="card">
+        <div class="card-header">
+          <h3>Mis vacantes</h3>
+          <button id="refrescarVacantes" class="btn-light">Actualizar</button>
+        </div>
+        <div id="listaVacantes" class="cards-grid"></div>
+        <div id="vaciasVac" class="muted" style="display:none;padding:16px;">Aún no tienes vacantes publicadas.</div>
+      </div>
+    </section>
+
+    <!-- Nueva vacante -->
+    <section id="nuevaTab" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>Crear nueva vacante</h3></div>
+        <div class="card-body grid-2">
+          <label class="field col-2">
+            <span>Puesto</span>
+            <input type="text" id="puesto" placeholder="Ej. Desarrollador Backend" />
+          </label>
+          <label class="field">
+            <span>Salario (MXN)</span>
+            <input type="number" id="salario" min="0" step="1000" />
+          </label>
+          <label class="field">
+            <span>Estado</span>
+            <select id="estado"><option value="">Selecciona estado</option></select>
+          </label>
+          <label class="field">
+            <span>Municipio</span>
+            <select id="municipio"><option value="">Selecciona municipio</option></select>
+          </label>
+          <label class="field col-2">
+            <span>Descripción</span>
+            <textarea id="descripcion" rows="5" placeholder="Responsabilidades, requisitos, beneficios…"></textarea>
+          </label>
+        </div>
+        <div class="card-footer">
+          <button id="btnCrear" class="btn-primary">
+            <span class="btn-text">Publicar vacante</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Postulaciones -->
+    <section id="postulacionesTab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>Postulaciones</h3>
+          <select id="vacanteFiltro"><option value="">Selecciona una vacante</option></select>
+        </div>
+        <div id="listaPostulaciones" class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Candidato</th>
+                <th>Email</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="postBody"></tbody>
+          </table>
+        </div>
+        <div id="vaciasPost" class="muted" style="display:none;padding:16px;">No hay postulaciones para esta vacante.</div>
+      </div>
+    </section>
+  </main>
+
+  <template id="vacanteCardTpl">
+    <article class="card vac-card">
+      <div class="vac-head">
+        <h3 class="vac-title"></h3>
+        <div class="vac-meta">
+          <span class="pill pill-loc"></span>
+          <span class="pill pill-sal"></span>
+        </div>
+      </div>
+      <p class="vac-desc"></p>
+      <div class="vac-actions">
+        <button class="btn-light btn-editar">Editar</button>
+        <button class="btn-danger btn-eliminar">Eliminar</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="/Js/empresa.js"></script>
+</body>
+</html>

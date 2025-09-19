@@ -1,95 +1,76 @@
-// main.js
+// frontend/Js/main.js
 
 // --- LOGIN ---
 const loginForm = document.getElementById('loginForm');
-loginForm.addEventListener('submit', async (e) => {
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = loginForm.email.value.trim();
     const password = loginForm.password.value.trim();
 
-    if (!email || !password) {
-        Swal.fire({ icon: 'warning', title: 'Campos incompletos', text: 'Por favor completa todos los campos.' });
-        return;
-    }
-
     try {
-        const res = await fetch('http://localhost:3000/usuarios/login', { // Ajusta la URL a tu backend
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+      const res = await fetch('/usuarios/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
 
-        const data = await res.json();
+      if (!data.ok) { alert(data.msg || 'Credenciales incorrectas'); return; }
 
-        if (!data.ok) {
-            Swal.fire({ icon: 'error', title: 'Error', text: data.msg || 'Credenciales incorrectas' });
-            return;
+      localStorage.setItem('id_usuario', data.id_usuario);
+      localStorage.setItem('email', email);
+      localStorage.setItem('tipo_usuario', data.tipo_usuario);
+
+      if (data.tipo_usuario === 'user') {
+        const chk = await fetch(`/candidatos/${data.id_usuario}/completo`);
+        const cj = await chk.json();
+        if (cj.ok && cj.completo) {
+          window.location.href = 'busqueda_vacantes.html';
+        } else {
+          window.location.href = 'perfil_candidato.html';
         }
-
-        // Redirigir según tipo de usuario
-        switch (data.tipo_usuario) {
-            case 'user':
-                window.location.href = 'perfil_candidato.html';
-                break;
-            case 'admin':
-                window.location.href = 'dashboard_admin.html';
-                break;
-            case 'empresa':
-                window.location.href = 'dashboard_empresa.html';
-                break;
-            default:
-                Swal.fire({ icon: 'error', title: 'Error', text: 'Tipo de usuario desconocido' });
-        }
-
+      } else if (data.tipo_usuario === 'admin') {
+        window.location.href = 'dashboard_admin.html';
+      } else if (data.tipo_usuario === 'empresa') {
+        window.location.href = 'dashboard_empresa.html';
+      } else {
+        alert('Tipo de usuario desconocido');
+      }
     } catch (err) {
-        console.error(err);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error en la conexión con el servidor.' });
+      console.error(err);
+      alert('Error en la conexión con el servidor.');
     }
-});
+  });
+}
 
 // --- SIGN UP (solo candidatos) ---
 const signupForm = document.getElementById('signupForm');
-signupForm.addEventListener('submit', async (e) => {
+if (signupForm) {
+  signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const nombre = signupForm.nombre.value.trim();
-    const apellido = signupForm.apellido.value.trim();
     const email = signupForm.email.value.trim();
     const password = signupForm.password.value.trim();
 
-    if (!nombre || !apellido || !email || !password) {
-        Swal.fire({ icon: 'warning', title: 'Campos incompletos', text: 'Por favor completa todos los campos.' });
-        return;
-    }
-
     try {
-        const res = await fetch('http://localhost:3000/usuarios/registro', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre, apellido, email, password })
-        });
+      const res = await fetch('/usuarios/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
 
-        const data = await res.json();
+      if (!data.ok) { alert(data.error || 'Error en el registro'); return; }
 
-        if (!data.ok) {
-            Swal.fire({ icon: 'error', title: 'Error', text: data.error || 'Error en el registro' });
-            return;
-        }
+      localStorage.setItem('id_usuario', data.id_usuario);
+      localStorage.setItem('email', data.email);
+      localStorage.setItem('tipo_usuario', data.tipo_usuario);
 
-        Swal.fire({
-            icon: 'success',
-            title: '¡Registro exitoso!',
-            text: 'Ya puedes iniciar sesión',
-            confirmButtonText: 'OK'
-        });
-
-        // Cambiar al login automáticamente
-        document.querySelector('.toggle').checked = false;
-        signupForm.reset();
-
+      window.location.href = 'perfil_candidato.html';
     } catch (err) {
-        console.error(err);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error en la conexión con el servidor.' });
+      console.error(err);
+      alert('Error en la conexión con el servidor.');
     }
-});
+  });
+}
