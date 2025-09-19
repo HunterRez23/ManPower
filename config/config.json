@@ -1,0 +1,9 @@
+{
+  "remoto": {
+    "host": "100.120.164.101",
+    "port": 5432,
+    "database": "contratacion",
+    "user": "hunter23",
+    "password": "Phix6021"
+  }
+}

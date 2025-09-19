@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Perfil del Candidato</title>
+  <!-- antes: /frontend/CSS/perfil.css -->
+  <link rel="stylesheet" href="/CSS/perfil.css" />
+</head>
+<body>
+  <div class="perfil-container">
+    <h2>Perfil del Candidato</h2>
+
+    <div class="perfil-steps">
+      <!-- 1) Datos personales -->
+      <section class="step">
+        <div class="step-header active">
+          <span class="dot"></span>
+          <h3>Datos personales</h3>
+        </div>
+        <div class="step-body">
+          <label>Nombre</label>
+          <input type="text" id="nombre" readonly />
+          <label>Apellido</label>
+          <input type="text" id="apellido" readonly />
+          <label>Email</label>
+          <input type="text" id="email" readonly />
+        </div>
+      </section>
+
+      <!-- 2) Currículum -->
+      <section class="step">
+        <div class="step-header">
+          <span class="dot hollow"></span>
+          <h3>Currículum vitae</h3>
+        </div>
+        <div class="step-body">
+          <label>Currículum (PDF)</label>
+          <input type="file" id="cv" accept=".pdf" />
+          <label>Certificados (PDF/JPG/PNG) — múltiples</label>
+          <input type="file" id="certificados" multiple accept=".pdf,.jpg,.png" />
+          <ul id="lista-uploads" class="upload-list"></ul>
+        </div>
+      </section>
+
+      <!-- 3) Activación -->
+      <section class="step">
+        <div class="step-header">
+          <span class="dot hollow"></span>
+          <h3>Activación</h3>
+        </div>
+        <div class="step-body">
+          <label>Puesto de preferencia</label>
+          <input type="text" id="puesto_preferencia" />
+          <label>Ubicación (Estado → Municipio)</label>
+          <select id="estado">
+            <option value="">Selecciona estado</option>
+          </select>
+          <select id="municipio">
+            <option value="">Selecciona municipio</option>
+          </select>
+        </div>
+      </section>
+    </div>
+
+    <button id="guardarPerfil">Guardar Perfil</button>
+  </div>
+
+  <!-- antes: /frontend/Js/perfil.js -->
+  <script type="module" src="/Js/perfil.js"></script>
+</body>
+</html>

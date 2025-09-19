@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Sign Up</title>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card-switch">
+            <label class="switch">
+               <input type="checkbox" class="toggle">
+               <span class="slider"></span>
+               <span class="card-side"></span>
+
+               <div class="flip-card__inner">
+                  <!-- LOGIN -->
+                  <div class="flip-card__front">
+                     <div class="title">Log in</div>
+                     <form class="flip-card__form" id="loginForm">
+                        <input class="flip-card__input" name="email" placeholder="Email" type="email" required>
+                        <input class="flip-card__input" name="password" placeholder="Password" type="password" required>
+                        <button type="submit" class="flip-card__btn">Let`s go!</button>
+                     </form>
+                  </div>
+                  <!-- SIGN UP -->
+                  <div class="flip-card__back">
+                     <div class="title">Sign up</div>
+                     <form class="flip-card__form" id="signupForm">
+                        <input class="flip-card__input" name="nombre" placeholder="Name" type="text" required>
+                        <input class="flip-card__input" name="apellido" placeholder="Last Name" type="text" required>
+                        <input class="flip-card__input" name="email" placeholder="Email" type="email" required>
+                        <input class="flip-card__input" name="password" placeholder="Password" type="password" required>
+                        <button type="submit" class="flip-card__btn">Confirm!</button>
+                     </form>
+                  </div>
+               </div>
+            </label>
+
+            <!-- BOTÓN EMPRESAS -->
+            <button id="btnEmpresa" class="flip-card__btn" style="margin-top:20px;">¿Eres empresa? Solicita acceso</button>
+        </div>   
+    </div>
+
+    <!-- JS -->
+    <script src="js/main.js"></script>
+
+    <script>
+        // Redirigir al formulario de empresas
+        document.getElementById('btnEmpresa').addEventListener('click', () => {
+            window.location.href = 'empresa_solicitud.html';
+        });
+    </script>
+</body>
+</html>
