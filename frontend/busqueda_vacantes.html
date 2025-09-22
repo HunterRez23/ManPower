@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <title>Buscar vacantes</title>
@@ -7,17 +8,30 @@
   <link rel="stylesheet" href="/CSS/vacantes.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
+
 <body>
   <header class="topbar">
     <div class="wrap">
       <h1 class="brand">ManPower</h1>
-      <nav>
-        <a href="/busqueda_vacantes.html" class="active">Vacantes</a>
-        <a href="/perfil_candidato.html">Mi perfil</a>
-        <button id="logoutBtn" class="link">Salir</button>
+      <nav class="nav-fancy">
+        <a href="/busqueda_vacantes.html" class="button nav-button active" data-text="Vacantes">
+          <span class="actual-text">&nbsp;Vacantes&nbsp;</span>
+          <span aria-hidden="true" class="hover-text">&nbsp;Vacantes&nbsp;</span>
+        </a>
+
+        <a href="/perfil_candidato.html" class="button nav-button" data-text="Mi perfil">
+          <span class="actual-text">&nbsp;Mi&nbsp;perfil&nbsp;</span>
+          <span aria-hidden="true" class="hover-text">&nbsp;Mi&nbsp;perfil&nbsp;</span>
+        </a>
+
+        <button id="logoutBtn" type="button" class="button nav-button" data-text="Salir">
+          <span class="actual-text">&nbsp;Salir&nbsp;</span>
+          <span aria-hidden="true" class="hover-text">&nbsp;Salir&nbsp;</span>
+        </button>
       </nav>
     </div>
   </header>
+
 
   <main class="page">
     <section class="filters card">
@@ -28,11 +42,15 @@
         </div>
         <div class="field">
           <label>Estado</label>
-          <select id="estado"><option value="">Todos</option></select>
+          <select id="estado">
+            <option value="">Todos</option>
+          </select>
         </div>
         <div class="field">
           <label>Municipio</label>
-          <select id="municipio"><option value="">Todos</option></select>
+          <select id="municipio">
+            <option value="">Todos</option>
+          </select>
         </div>
         <div class="field">
           <label>Empresa</label>
@@ -86,4 +104,5 @@
 
   <script type="module" src="/Js/vacantes.js"></script>
 </body>
+
 </html>

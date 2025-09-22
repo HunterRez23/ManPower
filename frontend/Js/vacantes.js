@@ -100,49 +100,76 @@ async function cargarMunicipios(val){
 let page = 1, total = 0, sourceAll = []; // para fallback cliente
 
 async function fetchVacantes(params){
-  const url = new URL(`${API}vacantes`, window.location.origin);
-  Object.entries(params).forEach(([k,v])=>{ if(v!=='' && v!=null) url.searchParams.set(k, v); });
-  // 1) intento: backend con filtros y paginación
+  // normaliza estado si por error viniera en JSON
+  if (params.estado && params.estado.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(params.estado);
+      params.estado = parsed.name || '';
+    } catch {}
+  }
+
+  const resultDefault = { total: 0, data: [] };
+
+  // -------- intento 1: pedir al backend con filtros ----------
   try{
+    const url = new URL(`${API}vacantes`, window.location.origin);
+    Object.entries(params).forEach(([k,v])=>{
+      if (v !== '' && v != null && k !== 'limit' && k !== 'page') { // backend no usa paginado aún
+        url.searchParams.set(k, v);
+      }
+    });
+
     const r = await fetch(url.toString());
-    if(r.ok){
-      // backend debería devolver {ok,total,data:[...]} — si no, intento interpretar
+    if (r.ok){
       const j = await r.json();
-      if(Array.isArray(j)) return { total:j.length, data:j.slice(0,PAGE_SIZE) };
-      if(j && Array.isArray(j.data)) return { total:j.total ?? j.data.length, data:j.data };
+      // si backend devuelve arreglo plano
+      if (Array.isArray(j)){
+        const start = (page-1)*PAGE_SIZE;
+        return { total: j.length, data: j.slice(start, start+PAGE_SIZE) };
+      }
+      // si backend devuelve {ok,total,data:[...]}
+      if (j && Array.isArray(j.data)){
+        return { total: j.total ?? j.data.length, data: j.data };
+      }
     }
-  }catch{}
-  // 2) fallback: traigo todo y filtro en cliente
+  }catch(e){
+    console.error('fetchVacantes primary:', e);
+  }
+
+  // -------- intento 2 (fallback): traigo todo y filtro en cliente ----------
   try{
-    if(sourceAll.length===0){
+    if (sourceAll.length === 0){
       const r = await fetch(`${API}vacantes`);
       sourceAll = r.ok ? await r.json() : [];
     }
-  }catch{ sourceAll = []; }
 
-  const txt = (s='') => (s||'').toString().toLowerCase();
-  const q = txt(params.q);
-  const est = txt(params.estado_name||'');
-  const mun = txt(params.municipio||'');
-  const emp = txt(params.empresa||'');
-  const smin = Number(params.smin||0);
-  const smax = Number(params.smax||0);
+    const txt = (s='') => (s || '').toString().toLowerCase();
+    const q   = txt(params.q);
+    const est = txt(params.estado || '');
+    const mun = txt(params.municipio || '');
+    const emp = txt(params.empresa || '');
+    const smin = Number(params.smin || 0);
+    const smax = Number(params.smax || 0);
 
-  const filtered = (sourceAll||[]).filter(v=>{
-    const enTxt = q ? (txt(v.nombre_puesto).includes(q) || txt(v.descripcion).includes(q)) : true;
-    const enEmp = emp ? txt(v.nombre_empresa||'').includes(emp) : true;
-    const enEst = est ? txt(v.estado||'').includes(est) : true;
-    const enMun = mun ? txt(v.municipio||'').includes(mun) : true;
-    const sal = Number(v.salario||0);
-    const okMin = smin ? sal>=smin : true;
-    const okMax = smax ? sal<=smax : true;
-    return enTxt && enEmp && enEst && enMun && okMin && okMax;
-  });
+    const filtered = (sourceAll || []).filter(v=>{
+      const enTxt = q  ? (txt(v.nombre_puesto).includes(q) || txt(v.descripcion).includes(q)) : true;
+      const enEmp = emp?  txt(v.nombre_empresa||'').includes(emp) : true;
+      const enEst = est?  txt(v.estado||'').includes(est) : true;
+      const enMun = mun?  txt(v.municipio||'').includes(mun) : true;
+      const sal = Number(v.salario || 0);
+      const okMin = smin ? sal >= smin : true;
+      const okMax = smax ? sal <= smax : true;
+      return enTxt && enEmp && enEst && enMun && okMin && okMax;
+    });
 
-  total = filtered.length;
-  const start = (page-1)*PAGE_SIZE;
-  const data = filtered.slice(start, start+PAGE_SIZE);
-  return { total, data };
+    const start = (page-1)*PAGE_SIZE;
+    return { total: filtered.length, data: filtered.slice(start, start+PAGE_SIZE) };
+  }catch(e){
+    console.error('fetchVacantes fallback:', e);
+  }
+
+  // último recurso
+  return resultDefault;
 }
 
 function renderVacantes(list){
@@ -167,29 +194,30 @@ function renderVacantes(list){
 
 async function buscar(){
   const valEstado = estadoEl.value;
+  // extrae el nombre si viene JSON; si no, deja tal cual
   let estado_name = '';
-  try{ estado_name = JSON.parse(valEstado||'{}').name || ''; }catch{}
+  try { estado_name = JSON.parse(valEstado || '{}').name || ''; } catch {}
+  const estadoParam = estado_name || valEstado || '';
 
   const params = {
     q: qEl.value.trim(),
-    estado: valEstado || '',
-    estado_name,
+    estado: estadoParam,                 // <-- nombre limpio
     municipio: municipioEl.value || '',
-    empresa: empresaEl.value.trim(),
+    empresa: (empresaEl.value || '').trim(),
     smin: salarioMinEl.value,
     smax: salarioMaxEl.value,
     page, limit: PAGE_SIZE
   };
 
-  const res = await fetchVacantes(params);
-  total = res.total || 0;
-  renderVacantes(res.data || []);
+  const res = await fetchVacantes(params) || { total: 0, data: [] };
+  total = Number(res.total || 0);
+  renderVacantes(Array.isArray(res.data) ? res.data : []);
 
   statsEl.textContent = total ? `${total} vacante(s) encontradas` : 'Sin resultados';
   pageInfo.textContent = `Página ${page}`;
-  prevBtn.disabled = page<=1;
   const maxPage = Math.max(1, Math.ceil(total/PAGE_SIZE));
-  nextBtn.disabled = page>=maxPage;
+  prevBtn.disabled = page <= 1;
+  nextBtn.disabled = page >= maxPage;
 }
 
 function detalles(v){
@@ -218,21 +246,43 @@ async function postular(v){
   });
   if(!ok.isConfirmed) return;
 
+  // (opcional) deshabilitar botón mientras envía
+  let btn = null;
+  const cards = document.querySelectorAll('.card-vacante');
+  for (const c of cards){
+    const t = c.querySelector('.vac-title')?.textContent?.trim();
+    if (t === (v.nombre_puesto||'').trim()){
+      btn = c.querySelector('.btn-postular'); break;
+    }
+  }
+  if (btn){ btn.disabled = true; btn.textContent = 'Enviando…'; }
+
   try{
     const r = await fetch(`${API}postulaciones`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ id_usuario, id_vacante: v.id_vacante || v.id || null })
     });
+    if (!r.ok){
+      const txt = await r.text();
+      throw new Error(`HTTP ${r.status}: ${txt}`);
+    }
     const j = await r.json();
     if(j.ok){
-      Toast.fire({icon:'success', title:'Postulación enviada'});
+      if (j.created === false){
+        Swal.fire({icon:'info', title:'Ya te habías postulado a esta vacante'});
+      }else{
+        Toast.fire({icon:'success', title:'Postulación enviada'});
+      }
+      if (btn){ btn.disabled = true; btn.textContent = 'Postulado'; }
     }else{
       Swal.fire({icon:'warning', title:'No se pudo postular', text: j.msg || j.error || 'Intenta más tarde'});
+      if (btn){ btn.disabled = false; btn.textContent = 'Postular'; }
     }
   }catch(e){
     console.error(e);
     Swal.fire({icon:'error', title:'Error de conexión'});
+    if (btn){ btn.disabled = false; btn.textContent = 'Postular'; }
   }
 }
 
@@ -266,7 +316,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       if(c.estado_preferencia){
         // busca por nombre
         [...estadoEl.options].forEach(o=>{
-          try{ const v=JSON.parse(o.value||'{}'); if((v.name||'').toLowerCase()===(c.estado_preferencia||'').toLowerCase()) estadoEl.value=o.value; }catch{}
+          try{
+            const v=JSON.parse(o.value||'{}');
+            if((v.name||'').toLowerCase()===(c.estado_preferencia||'').toLowerCase()) estadoEl.value=o.value;
+          }catch{}
         });
         await cargarMunicipios(estadoEl.value);
         municipioEl.value = c.municipio_preferencia || '';

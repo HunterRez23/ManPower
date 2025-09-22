@@ -32,24 +32,40 @@ const vacanteFiltro = document.getElementById('vacanteFiltro');
 const postBody = document.getElementById('postBody');
 const vaciasPost = document.getElementById('vaciasPost');
 
+let vacantesCache = new Map(); // id -> objeto vacante
+
+// ====== Tabs ======
+tabs.forEach(b=>{
+  b.addEventListener('click', ()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const id = b.dataset.tab;
+    sections.forEach(s=>s.classList.toggle('show', s.id===id));
+  });
+});
+
+// ====== Logout ======
+logoutBtn?.addEventListener('click', ()=>{
+  localStorage.clear();
+  window.location.href = '/index.html';
+});
+
 // ====== Estados/Municipios (CSC + Copomex) ======
 let State=null, City=null;
 async function loadCSC(){
-  try{
-    const mod = await import('https://esm.sh/country-state-city@3.1.1');
-    State = mod.State; City = mod.City; return true;
-  }catch(e){ return false; }
+  try{ const mod = await import('https://esm.sh/country-state-city@3.1.1');
+       State=mod.State; City=mod.City; return true; } catch { return false; }
 }
 const COPOMEX = 'https://api.copomex.com/query';
 const TOKEN = 'pruebas';
 async function copomexEstados(){
   const r = await fetch(`${COPOMEX}/get_estados?token=${TOKEN}`); const j = await r.json();
-  const a = j?.response ?? []; return a.map(x=>typeof x==='string'?x:(x?.estado||'')).filter(Boolean);
+  const a = j?.response ?? []; return a.map(x => typeof x==='string'?x:(x?.estado||'')).filter(Boolean);
 }
 async function copomexMunicipios(name){
   const r = await fetch(`${COPOMEX}/get_municipio_por_estado/${encodeURIComponent(name)}?token=${TOKEN}`);
   const j = await r.json(); const a = j?.response ?? [];
-  return a.map(x=>typeof x==='string'?x:(x?.municipio||'')).filter(Boolean);
+  return a.map(x => typeof x==='string'?x:(x?.municipio||'')).filter(Boolean);
 }
 function normalize(s=''){
   const map={á:'a',é:'e',í:'i',ó:'o',ú:'u',ü:'u',ñ:'n'};
@@ -78,78 +94,107 @@ async function llenarEstados(){
 async function cargarMunicipios(val){
   municipioEl.innerHTML = '<option value="">Selecciona municipio</option>';
   if(!val) return;
-  let iso=null, name='';
-  try{ const v = JSON.parse(val); iso=v.iso; name=v.name; }catch{}
-  if(City && iso){
+  let iso=null, name=''; try{ const v=JSON.parse(val); iso=v.iso; name=v.name; }catch{}
+  if (City && iso){
     const cities = City.getCitiesOfState('MX', iso) || [];
     const unique = [...new Set(cities.map(c=>c.name))].sort((a,b)=>a.localeCompare(b,'es'));
-    unique.forEach(n=>{
-      const o=document.createElement('option'); o.value=n; o.textContent=n; municipioEl.appendChild(o);
-    });
+    unique.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; municipioEl.appendChild(o); });
     return;
   }
   const muni = await copomexMunicipios(normalize(name));
-  muni.sort((a,b)=>a.localeCompare(b,'es')).forEach(n=>{
-    const o=document.createElement('option'); o.value=n; o.textContent=n; municipioEl.appendChild(o);
-  });
+  muni.sort((a,b)=>a.localeCompare(b,'es')).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; municipioEl.appendChild(o); });
+}
+estadoEl.addEventListener('change', e=>cargarMunicipios(e.target.value));
+
+// ====== Util ======
+function money(v){ const n=Number(v||0); return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
+function vacanteId(v){ return v.id_vacante ?? v.id ?? v.id_puesto; } // id tolerante a tus nombres de columna
+
+// ====== Mis vacantes (lista con fallback) ======
+async function fetchMisVacantes(){
+  // intento 1: /vacantes?empresa_id=<id_usuario>
+  try{
+    const r = await fetch(`${API}vacantes?empresa_id=${encodeURIComponent(id_usuario)}`);
+    if (r.ok){
+      const j = await r.json();
+      return Array.isArray(j) ? j : (j.data || []);
+    }
+  }catch{}
+
+  // intento 2: /vacantes/mias/<id_usuario>
+  try{
+    const r = await fetch(`${API}vacantes/mias/${encodeURIComponent(id_usuario)}`);
+    if (r.ok){
+      const j = await r.json();
+      return Array.isArray(j) ? j : (j.data || []);
+    }
+  }catch{}
+
+  return [];
 }
 
-// ====== Tabs ======
-tabs.forEach(b=>{
-  b.addEventListener('click', ()=>{
-    tabs.forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    const id = b.dataset.tab;
-    sections.forEach(s=>s.classList.toggle('show', s.id===id));
-  });
-});
-
-// ====== Vacantes (CRUD básico) ======
 async function cargarVacantes(){
   listaVacantes.innerHTML = '';
   vaciasVac.style.display = 'none';
+  vacantesCache.clear();
+
   try{
-    const r = await fetch(`${API}vacantes?empresa_id=${encodeURIComponent(id_usuario)}`);
-    const data = r.ok ? await r.json() : [];
-    if(!data || data.length===0){
+    const list = await fetchMisVacantes();
+
+    if(!list || list.length===0){
       vaciasVac.style.display = 'block';
-      vacanteFiltro.innerHTML = '<option value="">Selecciona una vacante</option>';
+      // limpia el filtro de postulaciones si quieres:
+      // vacanteFiltro.innerHTML = '<option value="">Selecciona una vacante</option>';
       return;
     }
 
-    vacanteFiltro.innerHTML = '<option value="">Selecciona una vacante</option>';
-    data.forEach(v=>{
-      // tarjeta
-      const node = tplVac.content.cloneNode(true);
-      node.querySelector('.vac-title').textContent = v.nombre_puesto || 'Puesto';
-      node.querySelector('.pill-loc').textContent = [v.municipio, v.estado].filter(Boolean).join(', ') || '—';
-      node.querySelector('.pill-sal').textContent = v.salario ? `$${Number(v.salario).toLocaleString()}` : 'Sueldo no especificado';
-      node.querySelector('.vac-desc').textContent = v.descripcion || '';
+    // Render con nodos reales (NO innerHTML)
+    list.forEach(v => {
+      const id = vacanteId(v);
+      vacantesCache.set(String(id), v);
 
-      node.querySelector('.btn-eliminar').addEventListener('click', ()=>eliminarVacante(v));
-      node.querySelector('.btn-editar').addEventListener('click', ()=>editarVacante(v));
+      // clonar el template
+      const frag = document.importNode(tplVac.content, true);
+      const card = frag.querySelector('.vac-card');
+      card.dataset.id = String(id); // para delegación
 
-      listaVacantes.appendChild(node);
+      card.querySelector('.vac-title').textContent = v.nombre_puesto || 'Puesto';
+      card.querySelector('.pill-loc').textContent  = [v.municipio, v.estado].filter(Boolean).join(', ') || '—';
+      card.querySelector('.pill-sal').textContent  = v.salario ? money(v.salario) : '—';
+      card.querySelector('.vac-desc').textContent  = v.descripcion || '';
 
-      // selector de postulaciones
-      const opt = document.createElement('option');
-      opt.value = v.id_vacante || v.id;
-      opt.textContent = `${v.nombre_puesto} – ${[v.municipio, v.estado].filter(Boolean).join(', ')}`;
-      vacanteFiltro.appendChild(opt);
+      listaVacantes.appendChild(frag);
     });
+
   }catch(e){
     console.error(e);
     Toast.fire({icon:'error', title:'No se pudieron cargar vacantes'});
   }
 }
 
+refrescarVacantesBtn?.addEventListener('click', cargarVacantes);
+listaVacantes.addEventListener('click', (e)=>{
+  const btnEliminar = e.target.closest('.btn-eliminar');
+  const btnEditar   = e.target.closest('.btn-editar');
+  if(!btnEliminar && !btnEditar) return;
+
+  const card = e.target.closest('.vac-card');
+  if(!card) return;
+  const id = card.dataset.id;
+  const v  = vacantesCache.get(String(id));
+  if(!v) return;
+
+  if(btnEliminar) eliminarVacante(v);
+  if(btnEditar)   editarVacante(v);
+});
+
+// ====== Crear nueva vacante ======
 async function crearVacante(){
   const valEstado = estadoEl.value;
-  let estado_name = ''; let iso = null;
-  try{ const v = JSON.parse(valEstado||'{}'); estado_name=v.name||''; iso=v.iso||null; }catch{}
+  let estado_name = ''; try{ const v = JSON.parse(valEstado||'{}'); estado_name = v.name || ''; }catch{ estado_name = valEstado; }
 
   const payload = {
-    empresa_id: id_usuario,
+    empresa_id: id_usuario, // backend debe resolver id_empresa con este id_usuario
     nombre_puesto: (puestoEl.value||'').trim(),
     descripcion: (descripcionEl.value||'').trim(),
     salario: salarioEl.value || null,
@@ -158,8 +203,7 @@ async function crearVacante(){
   };
 
   if(!payload.nombre_puesto || !payload.estado){
-    Swal.fire({icon:'warning', title:'Completa puesto y estado'});
-    return;
+    Swal.fire({icon:'warning', title:'Completa puesto y estado'}); return;
   }
 
   btnCrear.disabled = true;
@@ -171,14 +215,19 @@ async function crearVacante(){
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
+    if (!r.ok){
+      const txt = await r.text();
+      throw new Error(`HTTP ${r.status}: ${txt}`);
+    }
     const j = await r.json();
-    if(j.ok){
+    if (j.ok){
       Toast.fire({icon:'success', title:'Vacante publicada'});
-      puestoEl.value=''; salarioEl.value=''; estadoEl.value=''; municipioEl.innerHTML='<option value="">Selecciona municipio</option>'; descripcionEl.value='';
+      puestoEl.value=''; salarioEl.value=''; descripcionEl.value='';
+      estadoEl.value=''; municipioEl.innerHTML='<option value="">Selecciona municipio</option>';
       await cargarVacantes();
-      // Cambia a tab Mis vacantes
+      await cargarPostulacionesEmpresa(); // actualiza el filtro por si ya hay actividad
       document.querySelector('[data-tab="vacantesTab"]').click();
-    }else{
+    } else {
       Swal.fire({icon:'error', title:'No se pudo publicar', text: j.msg || j.error || ''});
     }
   }catch(e){
@@ -190,6 +239,7 @@ async function crearVacante(){
   }
 }
 
+// ====== Eliminar / Editar vacante ======
 async function eliminarVacante(v){
   const ok = await Swal.fire({
     icon:'warning', title:'Eliminar vacante',
@@ -199,11 +249,13 @@ async function eliminarVacante(v){
   if(!ok.isConfirmed) return;
 
   try{
-    const r = await fetch(`${API}vacantes/${v.id_vacante||v.id}`, { method:'DELETE' });
+    const id = vacanteId(v);
+    const r = await fetch(`${API}vacantes/${id}`, { method:'DELETE' });
     const j = await r.json();
     if(j.ok){
       Toast.fire({icon:'success', title:'Vacante eliminada'});
       await cargarVacantes();
+      await cargarPostulacionesEmpresa();
     }else{
       Swal.fire({icon:'error', title:'No se pudo eliminar', text: j.msg || j.error || ''});
     }
@@ -214,7 +266,7 @@ async function eliminarVacante(v){
 }
 
 async function editarVacante(v){
-  const { value: formValues } = await Swal.fire({
+  const { value: _vals } = await Swal.fire({
     title: 'Editar vacante',
     html: `
       <input id="sw-puesto" class="swal2-input" placeholder="Puesto" value="${v.nombre_puesto||''}">
@@ -226,17 +278,17 @@ async function editarVacante(v){
     confirmButtonText: 'Guardar'
   });
 
-  if(!formValues) return;
-  const nombre_puesto = document.getElementById('sw-puesto').value.trim();
-  const salario = document.getElementById('sw-sal').value;
-  const descripcion = document.getElementById('sw-desc').value;
+  const nombre_puesto = (document.getElementById('sw-puesto')?.value || '').trim();
+  const salario = document.getElementById('sw-sal')?.value || '';
+  const descripcion = document.getElementById('sw-desc')?.value || '';
 
   if(!nombre_puesto){
     Swal.fire({icon:'warning', title:'El puesto es obligatorio'}); return;
   }
 
   try{
-    const r = await fetch(`${API}vacantes/${v.id_vacante||v.id}`, {
+    const id = vacanteId(v);
+    const r = await fetch(`${API}vacantes/${id}`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ nombre_puesto, salario, descripcion })
@@ -254,74 +306,122 @@ async function editarVacante(v){
   }
 }
 
-// ====== Postulaciones ======
-async function cargarPostulaciones(idVac){
-  postBody.innerHTML = '';
-  vaciasPost.style.display = 'none';
-  if(!idVac) return;
+// ====== Postulaciones (con fallback si /empresa/:id NO existe) ======
+let cachePostulaciones = [];
 
+async function fetchPostulacionesEmpresa(){
+  // intento 1: endpoint agregado recomendado
   try{
-    const r = await fetch(`${API}postulaciones?vacante_id=${encodeURIComponent(idVac)}`);
-    const data = r.ok ? await r.json() : [];
-
-    if(!data || data.length===0){
-      vaciasPost.style.display = 'block'; return;
+    const r = await fetch(`${API}postulaciones/empresa/${id_usuario}`);
+    if (r.ok){
+      const j = await r.json();
+      if (j && Array.isArray(j.data)) return j.data;
     }
+  }catch{}
 
-    data.forEach(p=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${p.nombre || '-'} ${p.apellido || ''}</td>
-        <td>${p.email || '-'}</td>
-        <td>${p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}</td>
-        <td>${p.estado || 'enviada'}</td>
-        <td>
-          <button class="btn-primary" data-accion="aceptar" data-id="${p.id_postulacion}">Aceptar</button>
-          <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
-        </td>
-      `;
-      postBody.appendChild(tr);
-    });
-  }catch(e){
-    console.error(e);
-    Toast.fire({icon:'error', title:'No se pudieron cargar postulaciones'});
+  // intento 2 (fallback): traer mis vacantes y luego juntar /postulaciones?vacante_id=...
+  try{
+    const vacs = await fetchMisVacantes();
+    const all = [];
+    for (const v of vacs){
+      const idv = vacanteId(v);
+      if (!idv) continue;
+      try{
+        const r = await fetch(`${API}postulaciones?vacante_id=${encodeURIComponent(idv)}`);
+        if (r.ok){
+          const list = await r.json();
+          (list || []).forEach(p=>{
+            // normaliza campos para usar mismo render
+            all.push({
+              id_postulacion: p.id_postulacion || p.id,
+              created_at: p.created_at,
+              id_vacante: idv,
+              nombre_puesto: v.nombre_puesto,
+              nombre_empresa: v.nombre_empresa,
+
+              // datos del candidato (ajusta si tu payload devuelve otros nombres)
+              nombre_candidato: p.nombre || p.nombre_candidato || '',
+              apellido_candidato: p.apellido || p.apellido_candidato || '',
+              email_candidato: p.email || p.email_candidato || '',
+              telefono_candidato: p.telefono || p.telefono_candidato || '',
+              cv_path: p.cv_path || ''
+            });
+          });
+        }
+      }catch{}
+    }
+    return all;
+  }catch{
+    return [];
   }
 }
 
-postBody.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('button'); if(!btn) return;
-  const accion = btn.dataset.accion;
-  const id = btn.dataset.id;
-  if(!accion || !id) return;
+async function cargarPostulacionesEmpresa(){
+  postBody.innerHTML = `<tr><td colspan="5" class="muted">Cargando…</td></tr>`;
+  vaciasPost.style.display = 'none';
 
   try{
-    const r = await fetch(`${API}postulaciones/${id}`, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ estado: accion==='aceptar' ? 'aceptada' : 'rechazada' })
+    cachePostulaciones = await fetchPostulacionesEmpresa();
+
+    // Llenar filtro de vacantes únicas a partir de las postulaciones
+    const uniqueVac = new Map();
+    cachePostulaciones.forEach(p => {
+      uniqueVac.set(p.id_vacante, p.nombre_puesto || `Vacante #${p.id_vacante}`);
     });
-    const j = await r.json();
-    if(j.ok){
-      Toast.fire({icon:'success', title:`Postulación ${accion==='aceptar'?'aceptada':'rechazada'}`});
-      await cargarPostulaciones(vacanteFiltro.value);
-    }else{
-      Swal.fire({icon:'error', title:'No se pudo actualizar', text: j.msg || j.error || ''});
-    }
+
+    vacanteFiltro.innerHTML = `<option value="">Selecciona una vacante</option>`;
+    [...uniqueVac.entries()].forEach(([id, nombre])=>{
+      const o = document.createElement('option');
+      o.value = id; o.textContent = nombre;
+      vacanteFiltro.appendChild(o);
+    });
+
+    renderPostulaciones(); // sin filtro => muestra todas
   }catch(e){
     console.error(e);
-    Swal.fire({icon:'error', title:'Error de conexión'});
+    postBody.innerHTML = `<tr><td colspan="5" class="error">Error al cargar postulaciones.</td></tr>`;
   }
-});
+}
+
+function renderPostulaciones(){
+  const filter = vacanteFiltro.value;
+  const list = filter ? cachePostulaciones.filter(p=>String(p.id_vacante)===String(filter)) : cachePostulaciones;
+
+  if (!list.length){
+    postBody.innerHTML = '';
+    vaciasPost.style.display = 'block';
+    return;
+  }
+  vaciasPost.style.display = 'none';
+
+  postBody.innerHTML = list.map(p=>{
+    const nombre = [p.nombre_candidato, p.apellido_candidato].filter(Boolean).join(' ') || (p.email_candidato || 'Candidato');
+    const fecha  = p.created_at ? new Date(p.created_at).toLocaleString() : '—';
+    const estado = 'Recibida';
+    const cvLink = p.cv_path ? `<a href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : '—';
+    return `
+      <tr>
+        <td>${nombre}</td>
+        <td>${p.email_candidato || '—'}</td>
+        <td>${fecha}</td>
+        <td>${estado}</td>
+        <td style="display:flex; gap:8px; flex-wrap:wrap;">
+          ${cvLink}
+          <a class="btn-light" href="mailto:${p.email_candidato}?subject=Postulación%20a%20${encodeURIComponent(p.nombre_puesto||'vacante')}">Contactar</a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+vacanteFiltro.addEventListener('change', renderPostulaciones);
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async ()=>{
-  logoutBtn?.addEventListener('click', ()=>{ localStorage.clear(); window.location.href='/index.html'; });
-
   await llenarEstados();
-  estadoEl.addEventListener('change', e=>cargarMunicipios(e.target.value));
   btnCrear.addEventListener('click', crearVacante);
   refrescarVacantesBtn.addEventListener('click', cargarVacantes);
-  vacanteFiltro.addEventListener('change', e=>cargarPostulaciones(e.target.value));
 
   await cargarVacantes();
+  await cargarPostulacionesEmpresa();
 });

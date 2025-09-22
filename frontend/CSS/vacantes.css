@@ -15,6 +15,61 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,s
 .topbar a, .topbar .link{color:var(--muted);text-decoration:none;border:none;background:none;cursor:pointer;font-weight:600}
 .topbar a.active{color:var(--primary)}
 
+/* === Botones fancy de la topbar (Uiverse adaptado) === */
+.nav-fancy { display:flex; gap:22px; align-items:center; }
+
+.button {
+  margin: 0; padding: 0; border: none; background: transparent;
+  cursor: pointer; height: auto;
+  /* Ajustes para cabecera: más compactos */
+  --border-right: 4px;
+  --text-stroke-color: rgba(17,24,39,0.55); /* gris oscuro ligero */
+  --animation-color: #1305d1;               /* verde efecto hover */
+  --fs-size: 15px;
+  letter-spacing: .5px;
+  font-size: var(--fs-size);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  position: relative;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: .9px var(--text-stroke-color);
+  line-height: 1;
+}
+
+/* el texto real (visible) */
+.button .actual-text { visibility: visible; }
+
+/* capa animada; por defecto NO muestra barrita */
+.button .hover-text {
+  position: absolute; inset: 0; width: 0%;
+  overflow: hidden; transition: width .45s ease;
+  color: var(--animation-color);
+  -webkit-text-stroke: .9px var(--animation-color);
+  border-right: 0; /* <-- evita la barrita fija */
+  box-sizing: border-box;
+}
+
+/* Solo al pasar el mouse aparece la barrita + relleno */
+.button:hover .hover-text {
+  width: 100%;
+  border-right: var(--border-right) solid var(--animation-color);
+  filter: drop-shadow(0 0 12px var(--animation-color));
+}
+
+/* Estado activo (página actual): se muestra “encendido” sin barrita */
+.nav-button.active .hover-text {
+  width: 100%;
+  border-right: 0;                  /* sin barrita vertical */
+  filter: drop-shadow(0 0 6px var(--animation-color));
+}
+
+/* Ajuste de tamaño en pantallas pequeñas */
+@media (max-width: 640px){
+  .button { --fs-size: 13px; }
+  .nav-fancy { gap: 14px; }
+}
+
+
 .page{max-width:1100px;margin:22px auto 80px;padding:0 16px}
 
 /* Tarjetas */
@@ -65,3 +120,4 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,s
 /* Paginación responsiva */
 .pagination{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:18px;flex-wrap:wrap}
 .page-info{color:var(--muted)}
+

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Solicitud de acceso para empresas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/CSS/empresa_solicitud.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1 class="brand">ManPower</h1>
+      <nav>
+        <a href="/index.html" class="link">Inicio</a>
+        <a href="/busqueda_vacantes.html" class="link">Vacantes</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="title">Solicitud de acceso para empresas</h2>
+          <p class="muted">Completa el formulario y crea tu cuenta de empresa.</p>
+        </div>
+      </div>
+
+      <form id="formEmpresa" class="card-body grid-2">
+        <!-- Login + seguridad -->
+        <label class="field">
+          <span>Usuario (login)</span>
+          <input id="username" required placeholder="tu_usuario" />
+        </label>
+
+        <label class="field">
+          <span>Email corporativo</span>
+          <input id="email" type="email" required placeholder="contacto@empresa.com" />
+        </label>
+
+        <label class="field">
+          <span>Contraseña</span>
+          <input id="password" type="password" required />
+        </label>
+
+        <label class="field">
+          <span>Confirmar contraseña</span>
+          <input id="password2" type="password" required />
+        </label>
+
+        <!-- Datos de empresa -->
+        <label class="field">
+          <span>Nombre de la empresa</span>
+          <input id="nombre_empresa" required placeholder="ACME S.A. de C.V." />
+        </label>
+
+        <label class="field">
+          <span>RFC (opcional)</span>
+          <input id="rfc" placeholder="XAXX010101000" />
+        </label>
+
+        <label class="field">
+          <span>Teléfono</span>
+          <input id="telefono" placeholder="(xxx) xxx xxxx" />
+        </label>
+
+        <label class="field">
+          <span>Sitio web (opcional)</span>
+          <input id="sitio_web" placeholder="https://mi-empresa.com" />
+        </label>
+
+        <label class="field">
+          <span>Estado</span>
+          <select id="estado" required>
+            <option value="">Selecciona estado</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Municipio</span>
+          <select id="municipio" required>
+            <option value="">Selecciona municipio</option>
+          </select>
+        </label>
+
+        <label class="field col-2">
+          <span>Dirección (calle, número, colonia)</span>
+          <input id="direccion" placeholder="Calle, número, colonia" />
+        </label>
+
+        <label class="field">
+          <span>Nombre de contacto</span>
+          <input id="contacto_nombre" placeholder="Nombre Apellido" />
+        </label>
+
+        <label class="field">
+          <span>Cargo del contacto (opcional)</span>
+          <input id="contacto_cargo" placeholder="RH, Reclutador(a), etc." />
+        </label>
+
+        <div class="actions col-2">
+          <button type="submit" class="btn-primary">
+            <span class="btn-text">Solicitar acceso</span>
+          </button>
+          <a class="btn-light" href="/index.html">Volver</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/Js/empresa_solicitud.js"></script>
+</body>
+</html>

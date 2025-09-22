@@ -2,11 +2,10 @@
 const bcrypt = require('bcrypt');
 
 async function generar() {
-  const pass1 = await bcrypt.hash('1234', 10); // contraseña de admin
-  const pass2 = await bcrypt.hash('abcd', 10); // contraseña de usuario
-
-  console.log('Hash admin:', pass1);
-  console.log('Hash user:', pass2);
+  const plain = process.argv[2] || '123456';  // usa "1234" si no pasas nada
+  const hash = await bcrypt.hash(plain, 10);
+  console.log(`Contraseña: ${plain}`);
+  console.log(`Hash: ${hash}`);
 }
 
 generar();
