@@ -33,6 +33,7 @@ const postBody = document.getElementById('postBody');
 const vaciasPost = document.getElementById('vaciasPost');
 
 let vacantesCache = new Map(); // id -> objeto vacante
+let cachePostulaciones = [];   // array de postulaciones normalizadas
 
 // ====== Tabs ======
 tabs.forEach(b=>{
@@ -108,7 +109,7 @@ estadoEl.addEventListener('change', e=>cargarMunicipios(e.target.value));
 
 // ====== Util ======
 function money(v){ const n=Number(v||0); return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
-function vacanteId(v){ return v.id_vacante ?? v.id ?? v.id_puesto; } // id tolerante a tus nombres de columna
+function vacanteId(v){ return v.id_vacante ?? v.id ?? v.id_puesto; } // tolerante a nombres
 
 // ====== Mis vacantes (lista con fallback) ======
 async function fetchMisVacantes(){
@@ -143,8 +144,6 @@ async function cargarVacantes(){
 
     if(!list || list.length===0){
       vaciasVac.style.display = 'block';
-      // limpia el filtro de postulaciones si quieres:
-      // vacanteFiltro.innerHTML = '<option value="">Selecciona una vacante</option>';
       return;
     }
 
@@ -153,10 +152,9 @@ async function cargarVacantes(){
       const id = vacanteId(v);
       vacantesCache.set(String(id), v);
 
-      // clonar el template
       const frag = document.importNode(tplVac.content, true);
       const card = frag.querySelector('.vac-card');
-      card.dataset.id = String(id); // para delegación
+      card.dataset.id = String(id);
 
       card.querySelector('.vac-title').textContent = v.nombre_puesto || 'Puesto';
       card.querySelector('.pill-loc').textContent  = [v.municipio, v.estado].filter(Boolean).join(', ') || '—';
@@ -194,7 +192,7 @@ async function crearVacante(){
   let estado_name = ''; try{ const v = JSON.parse(valEstado||'{}'); estado_name = v.name || ''; }catch{ estado_name = valEstado; }
 
   const payload = {
-    empresa_id: id_usuario, // backend debe resolver id_empresa con este id_usuario
+    empresa_id: id_usuario, // backend resuelve id_empresa con este id_usuario
     nombre_puesto: (puestoEl.value||'').trim(),
     descripcion: (descripcionEl.value||'').trim(),
     salario: salarioEl.value || null,
@@ -225,7 +223,7 @@ async function crearVacante(){
       puestoEl.value=''; salarioEl.value=''; descripcionEl.value='';
       estadoEl.value=''; municipioEl.innerHTML='<option value="">Selecciona municipio</option>';
       await cargarVacantes();
-      await cargarPostulacionesEmpresa(); // actualiza el filtro por si ya hay actividad
+      await cargarPostulacionesEmpresa();
       document.querySelector('[data-tab="vacantesTab"]').click();
     } else {
       Swal.fire({icon:'error', title:'No se pudo publicar', text: j.msg || j.error || ''});
@@ -307,19 +305,22 @@ async function editarVacante(v){
 }
 
 // ====== Postulaciones (con fallback si /empresa/:id NO existe) ======
-let cachePostulaciones = [];
-
 async function fetchPostulacionesEmpresa(){
-  // intento 1: endpoint agregado recomendado
+  // intento 1: endpoint principal
   try{
     const r = await fetch(`${API}postulaciones/empresa/${id_usuario}`);
     if (r.ok){
       const j = await r.json();
-      if (j && Array.isArray(j.data)) return j.data;
+      if (j && Array.isArray(j.data)) {
+        return j.data.map(p => ({
+          ...p,
+          id_candidato_usuario: p.id_candidato_usuario // asegurar campo
+        }));
+      }
     }
   }catch{}
 
-  // intento 2 (fallback): traer mis vacantes y luego juntar /postulaciones?vacante_id=...
+  // intento 2: juntar por vacante
   try{
     const vacs = await fetchMisVacantes();
     const all = [];
@@ -331,20 +332,19 @@ async function fetchPostulacionesEmpresa(){
         if (r.ok){
           const list = await r.json();
           (list || []).forEach(p=>{
-            // normaliza campos para usar mismo render
             all.push({
               id_postulacion: p.id_postulacion || p.id,
               created_at: p.created_at,
               id_vacante: idv,
               nombre_puesto: v.nombre_puesto,
               nombre_empresa: v.nombre_empresa,
-
-              // datos del candidato (ajusta si tu payload devuelve otros nombres)
+              estado: p.estado || 'recibida',
               nombre_candidato: p.nombre || p.nombre_candidato || '',
               apellido_candidato: p.apellido || p.apellido_candidato || '',
               email_candidato: p.email || p.email_candidato || '',
               telefono_candidato: p.telefono || p.telefono_candidato || '',
-              cv_path: p.cv_path || ''
+              cv_path: p.cv_path || '',
+              id_candidato_usuario: p.id_usuario || null
             });
           });
         }
@@ -383,6 +383,34 @@ async function cargarPostulacionesEmpresa(){
   }
 }
 
+function accionesHTML(p) {
+  const estado = String(p.estado || '').toLowerCase();
+
+  // Estados terminales (sin acciones)
+  if (estado === 'contratada') {
+    return `<span class="badge badge-success">Contratada</span>`;
+  }
+  if (estado === 'rechazada') {
+    return `<span class="badge">Rechazada</span>`;
+  }
+
+  // Preseleccionada: contratar o rechazar
+  if (estado === 'aceptada') {
+    return `
+      ${p.cv_path ? `<a class="btn-pill" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : ``}
+      <button class="btn-primary" data-accion="contratar" data-id="${p.id_postulacion}">Contratar</button>
+      <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
+    `;
+  }
+
+  // Recibida: preselección o rechazo
+  return `
+    ${p.cv_path ? `<a class="btn-pill" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : ``}
+    <button class="btn-light" data-accion="aceptar" data-id="${p.id_postulacion}">Aceptar</button>
+    <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
+  `;
+}
+
 function renderPostulaciones(){
   const filter = vacanteFiltro.value;
   const list = filter ? cachePostulaciones.filter(p=>String(p.id_vacante)===String(filter)) : cachePostulaciones;
@@ -397,22 +425,145 @@ function renderPostulaciones(){
   postBody.innerHTML = list.map(p=>{
     const nombre = [p.nombre_candidato, p.apellido_candidato].filter(Boolean).join(' ') || (p.email_candidato || 'Candidato');
     const fecha  = p.created_at ? new Date(p.created_at).toLocaleString() : '—';
-    const estado = 'Recibida';
-    const cvLink = p.cv_path ? `<a href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : '—';
+    const estado = (p.estado || 'recibida').toUpperCase();
     return `
-      <tr>
+      <tr data-id="${p.id_postulacion}" data-candidato="${p.id_candidato_usuario || ''}">
         <td>${nombre}</td>
         <td>${p.email_candidato || '—'}</td>
         <td>${fecha}</td>
         <td>${estado}</td>
-        <td style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${cvLink}
-          <a class="btn-light" href="mailto:${p.email_candidato}?subject=Postulación%20a%20${encodeURIComponent(p.nombre_puesto||'vacante')}">Contactar</a>
-        </td>
+        <td class="acciones">${accionesHTML(p)}</td>
       </tr>
     `;
   }).join('');
 }
+
+// Acciones: aceptar / rechazar (con motivo) / contratar (confirmación)
+postBody.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  const accion = btn.dataset.accion;
+  const id = btn.dataset.id;
+  if(!accion || !id) return;
+
+  // fila y candidato
+  const tr = btn.closest('tr');
+  const idCandidato = tr?.getAttribute('data-candidato') || null;
+
+  // postulación para textos de notificación
+  const post = cachePostulaciones.find(p => String(p.id_postulacion) === String(id));
+
+  let estado = null;
+  let motivo = '';
+
+  if (accion === 'aceptar') {
+    estado = 'aceptada';
+  } else if (accion === 'contratar') {
+    const ok = await Swal.fire({
+      icon:'question',
+      title:'Confirmar contratación',
+      text:'¿Deseas marcar esta postulación como CONTRATADA?',
+      showCancelButton:true,
+      confirmButtonText:'Sí, contratar',
+      cancelButtonText:'Cancelar'
+    });
+    if (!ok.isConfirmed) return;
+    estado = 'contratada';
+  } else if (accion === 'rechazar') {
+    const { value: txt, isConfirmed } = await Swal.fire({
+      icon: 'warning',
+      title: 'Rechazar postulación',
+      input: 'textarea',
+      inputLabel: 'Motivo (opcional)',
+      inputPlaceholder: 'Ej. En esta ocasión seguimos con otros perfiles más alineados...',
+      inputAttributes: { 'aria-label': 'Motivo de rechazo' },
+      showCancelButton: true,
+      confirmButtonText: 'Rechazar',
+      cancelButtonText: 'Cancelar'
+    });
+    if (!isConfirmed) return;
+    estado = 'rechazada';
+    motivo = (txt || '').trim();
+  } else {
+    return;
+  }
+
+  btn.disabled = true;
+
+  try{
+    // 1) Actualiza estado
+    const r = await fetch(`${API}postulaciones/${id}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ estado })
+    });
+    const j = await r.json();
+
+    if (!j.ok) {
+      btn.disabled = false;
+      return Swal.fire({icon:'error', title:'No se pudo actualizar', text: j.msg || j.error || ''});
+    }
+
+    // 2) Notificaciones a candidato (si conocemos su id de usuario)
+    const vac = post?.nombre_puesto || 'la vacante';
+    const emp = post?.nombre_empresa || 'la empresa';
+
+    if (idCandidato) {
+      if (estado === 'aceptada') {
+        fetch('/avisos', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            id_usuario: idCandidato,
+            tipo: 'postulacion',
+            titulo: '¡Fuiste preseleccionado(a)!',
+            mensaje: `Has sido preseleccionado(a) para <b>${vac}</b> en <b>${emp}</b>. Revisa tu correo para los siguientes pasos.`
+          })
+        }).catch(()=>{});
+      } else if (estado === 'contratada') {
+        fetch('/avisos', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            id_usuario: idCandidato,
+            tipo: 'postulacion',
+            titulo: '¡Fuiste contratado(a)!',
+            mensaje: `¡Felicidades! Fuiste contratado(a) para <b>${vac}</b> en <b>${emp}</b>. La empresa se pondrá en contacto contigo.`
+          })
+        }).catch(()=>{});
+      } else if (estado === 'rechazada') {
+        const mensaje = [
+          `Gracias por postularte a <b>${vac}</b> en <b>${emp}</b>.`,
+          motivo ? `<br><br><b>Motivo:</b> ${motivo}` : '',
+          `<br><br>Te invitamos a seguir aplicando a otras vacantes.`
+        ].join('');
+        fetch('/avisos', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            id_usuario: idCandidato,
+            tipo: 'postulacion',
+            titulo: 'Tu postulación fue rechazada',
+            mensaje
+          })
+        }).catch(()=>{});
+      }
+    }
+
+    Toast.fire({
+      icon:'success',
+      title:
+        estado==='aceptada'   ? 'Candidato preseleccionado' :
+        estado==='contratada' ? 'Candidato contratado' :
+                                'Postulación rechazada'
+    });
+    await cargarPostulacionesEmpresa();
+
+  }catch(err){
+    console.error(err);
+    Swal.fire({icon:'error', title:'Error de conexión'});
+    btn.disabled = false;
+  }
+});
 
 vacanteFiltro.addEventListener('change', renderPostulaciones);
 

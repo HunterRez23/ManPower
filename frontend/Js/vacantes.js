@@ -50,6 +50,10 @@ const tpl = document.getElementById('vacanteCardTpl');
 
 const logoutBtn = document.getElementById('logoutBtn');
 
+// botones de avisos (usa el que exista en tu HTML)
+const btnAvisos  = document.getElementById('btnAvisos');
+const notifyBtn  = document.getElementById('notifyBtn');
+
 // ===== Sesión mínima =====
 const id_usuario = localStorage.getItem('id_usuario');
 if(!id_usuario){ window.location.href = '/index.html'; }
@@ -176,6 +180,9 @@ function renderVacantes(list){
   listaEl.innerHTML = '';
   list.forEach(v=>{
     const node = tpl.content.cloneNode(true);
+    const article = node.querySelector('article');
+    if (article) article.classList.add('card-vacante'); // para ubicar la tarjeta
+
     node.querySelector('.vac-title').textContent = v.nombre_puesto || 'Puesto';
     node.querySelector('.vac-empresa').textContent = v.nombre_empresa || 'Empresa';
     node.querySelector('.pill-loc').textContent = [v.municipio, v.estado].filter(Boolean).join(', ') || '—';
@@ -201,7 +208,7 @@ async function buscar(){
 
   const params = {
     q: qEl.value.trim(),
-    estado: estadoParam,                 // <-- nombre limpio
+    estado: estadoParam,                 // nombre limpio
     municipio: municipioEl.value || '',
     empresa: (empresaEl.value || '').trim(),
     smin: salarioMinEl.value,
@@ -277,12 +284,96 @@ async function postular(v){
       if (btn){ btn.disabled = true; btn.textContent = 'Postulado'; }
     }else{
       Swal.fire({icon:'warning', title:'No se pudo postular', text: j.msg || j.error || 'Intenta más tarde'});
-      if (btn){ btn.disabled = false; btn.textContent = 'Postular'; }
+      if (btn){ btn.disabled = false; btn.textContent = 'Postularme'; }
     }
   }catch(e){
     console.error(e);
     Swal.fire({icon:'error', title:'Error de conexión'});
-    if (btn){ btn.disabled = false; btn.textContent = 'Postular'; }
+    if (btn){ btn.disabled = false; btn.textContent = 'Postularme'; }
+  }
+}
+
+// ====== Notificaciones (candidato) ======
+// Usa /postulaciones/mias/:id para detectar estados aceptada/contratada (y no repetir avisos)
+function getSeen() {
+  try { return JSON.parse(localStorage.getItem('seenPostu') || '[]'); } catch { return []; }
+}
+function setSeen(arr) { localStorage.setItem('seenPostu', JSON.stringify(arr)); }
+
+async function checkNotificaciones() {
+  const me = localStorage.getItem('id_usuario');
+  if (!me) return;
+
+  try {
+    const r = await fetch(`/postulaciones/mias/${encodeURIComponent(me)}`);
+    const j = await r.json();
+    const rows = j?.data || [];
+
+    const seen = new Set(getSeen());
+    let showed = 0;
+
+    for (const p of rows) {
+      const key = String(p.id_postulacion);
+      const estado = String(p.estado || '').toLowerCase();
+      if ((estado === 'aceptada' || estado === 'contratada') && !seen.has(key)) {
+        showed++;
+        seen.add(key);
+
+        Swal.fire({
+          icon: 'success',
+          title: estado === 'contratada' ? '¡Fuiste contratado(a)!' : '¡Fuiste seleccionado(a)!',
+          html: `
+            <p><b>Vacante:</b> ${p.nombre_puesto || '—'}</p>
+            <p><b>Empresa:</b> ${p.nombre_empresa || '—'}</p>
+            <p style="margin-top:10px">Revisa tu correo para más instrucciones o contacta a la empresa.</p>
+          `,
+          confirmButtonText: 'OK'
+        });
+      }
+    }
+
+    setSeen(Array.from(seen));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Centro de avisos (usa /avisos)
+async function cargarAvisos() {
+  try {
+    const r = await fetch(`/avisos?user_id=${encodeURIComponent(id_usuario)}&solo_nuevos=1`);
+    const j = await r.json();
+
+    const items = (j?.data || []);
+    if (!items.length) {
+      return Swal.fire({ icon:'info', title:'Sin avisos', text:'No tienes avisos nuevos.' });
+    }
+
+    const html = items.map(n => `
+      <div style="margin:8px 0; text-align:left">
+        <b>${n.titulo}</b><br/>
+        <small style="color:#666">${new Date(n.created_at).toLocaleString()}</small>
+        <p style="margin:6px 0 0">${n.mensaje}</p>
+        <hr/>
+      </div>
+    `).join('');
+
+    const ok = await Swal.fire({
+      title: 'Tus avisos',
+      html,
+      width: 600,
+      showCancelButton: true,
+      confirmButtonText: 'Marcar como leídos',
+      cancelButtonText: 'Cerrar'
+    });
+
+    if (ok.isConfirmed) {
+      await fetch(`/avisos/leido_todos?user_id=${encodeURIComponent(id_usuario)}`, { method:'PUT' });
+      Toast.fire({ icon:'success', title:'Avisos marcados como leídos' });
+    }
+  } catch (e) {
+    console.error(e);
+    Swal.fire({ icon:'error', title:'Error cargando avisos' });
   }
 }
 
@@ -292,6 +383,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   logoutBtn?.addEventListener('click', ()=>{
     localStorage.clear();
     window.location.href = '/index.html';
+  });
+
+  // botón avisos (funciona con cualquiera de los dos ids)
+  btnAvisos?.addEventListener('click', async ()=>{
+    await cargarAvisos();
+    await checkNotificaciones();
+  });
+  notifyBtn?.addEventListener('click', async ()=>{
+    await cargarAvisos();
+    await checkNotificaciones();
   });
 
   await llenarEstados();
@@ -312,9 +413,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const c = j?.candidato;
     if(c){
       qEl.value = c.puesto_preferencia || '';
-      // Estado
       if(c.estado_preferencia){
-        // busca por nombre
         [...estadoEl.options].forEach(o=>{
           try{
             const v=JSON.parse(o.value||'{}');
@@ -327,5 +426,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     }
   }catch{}
 
-  buscar();
+  await buscar();
+
+  // Revisión automática de avisos al entrar (y puedes activar cada 60s si quieres)
+  checkNotificaciones();
+  // setInterval(checkNotificaciones, 60000);
 });

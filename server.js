@@ -9,6 +9,7 @@ const expedientesRouter   = require('./backend/expedientes');
 const vacantesRouter      = require('./backend/vacantes');
 const postulacionesRouter = require('./backend/postulaciones'); // <-- AÑADE ESTO
 const empresasRouter    = require('./backend/empresas');
+const notificacionesRouter = require('./backend/notificaciones');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use('/expedientes',    expedientesRouter);
 app.use('/vacantes',       vacantesRouter);
 app.use('/postulaciones',  postulacionesRouter);               // <-- AÑADE ESTO
 app.use('/empresas',     empresasRouter); // <--- AQUI
+app.use('/avisos', notificacionesRouter);
 
 // ===== estáticos =====
 app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));

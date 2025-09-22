@@ -121,3 +121,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,s
 .pagination{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:18px;flex-wrap:wrap}
 .page-info{color:var(--muted)}
 
+/* Nav con botones Uiverse */
+.nav-fancy { display:flex; gap:16px; align-items:center; }
+
+/* Tamaño más compacto para barra */
+.nav-fancy .button {
+  --fs-size: 14px;
+  letter-spacing: 1px;
+}
