@@ -1,5 +1,4 @@
 // /frontend/Js/empresa.js
-
 const API = '/';
 const Toast = Swal.mixin({ toast:true, position:'top-end', timer:2000, showConfirmButton:false });
 
@@ -111,9 +110,8 @@ estadoEl.addEventListener('change', e=>cargarMunicipios(e.target.value));
 function money(v){ const n=Number(v||0); return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
 function vacanteId(v){ return v.id_vacante ?? v.id ?? v.id_puesto; } // tolerante a nombres
 
-// ====== Mis vacantes (lista con fallback) ======
+// ====== Mis vacantes ======
 async function fetchMisVacantes(){
-  // intento 1: /vacantes?empresa_id=<id_usuario>
   try{
     const r = await fetch(`${API}vacantes?empresa_id=${encodeURIComponent(id_usuario)}`);
     if (r.ok){
@@ -121,8 +119,6 @@ async function fetchMisVacantes(){
       return Array.isArray(j) ? j : (j.data || []);
     }
   }catch{}
-
-  // intento 2: /vacantes/mias/<id_usuario>
   try{
     const r = await fetch(`${API}vacantes/mias/${encodeURIComponent(id_usuario)}`);
     if (r.ok){
@@ -130,7 +126,6 @@ async function fetchMisVacantes(){
       return Array.isArray(j) ? j : (j.data || []);
     }
   }catch{}
-
   return [];
 }
 
@@ -141,13 +136,10 @@ async function cargarVacantes(){
 
   try{
     const list = await fetchMisVacantes();
-
     if(!list || list.length===0){
       vaciasVac.style.display = 'block';
       return;
     }
-
-    // Render con nodos reales (NO innerHTML)
     list.forEach(v => {
       const id = vacanteId(v);
       vacantesCache.set(String(id), v);
@@ -163,7 +155,6 @@ async function cargarVacantes(){
 
       listaVacantes.appendChild(frag);
     });
-
   }catch(e){
     console.error(e);
     Toast.fire({icon:'error', title:'No se pudieron cargar vacantes'});
@@ -192,7 +183,7 @@ async function crearVacante(){
   let estado_name = ''; try{ const v = JSON.parse(valEstado||'{}'); estado_name = v.name || ''; }catch{ estado_name = valEstado; }
 
   const payload = {
-    empresa_id: id_usuario, // backend resuelve id_empresa con este id_usuario
+    empresa_id: id_usuario,
     nombre_puesto: (puestoEl.value||'').trim(),
     descripcion: (descripcionEl.value||'').trim(),
     salario: salarioEl.value || null,
@@ -304,23 +295,18 @@ async function editarVacante(v){
   }
 }
 
-// ====== Postulaciones (con fallback si /empresa/:id NO existe) ======
+// ====== Postulaciones ======
 async function fetchPostulacionesEmpresa(){
-  // intento 1: endpoint principal
   try{
     const r = await fetch(`${API}postulaciones/empresa/${id_usuario}`);
     if (r.ok){
       const j = await r.json();
       if (j && Array.isArray(j.data)) {
-        return j.data.map(p => ({
-          ...p,
-          id_candidato_usuario: p.id_candidato_usuario // asegurar campo
-        }));
+        return j.data.map(p => ({ ...p, id_candidato_usuario: p.id_candidato_usuario }));
       }
     }
   }catch{}
 
-  // intento 2: juntar por vacante
   try{
     const vacs = await fetchMisVacantes();
     const all = [];
@@ -339,6 +325,7 @@ async function fetchPostulacionesEmpresa(){
               nombre_puesto: v.nombre_puesto,
               nombre_empresa: v.nombre_empresa,
               estado: p.estado || 'recibida',
+              prioridad: !!p.prioridad,
               nombre_candidato: p.nombre || p.nombre_candidato || '',
               apellido_candidato: p.apellido || p.apellido_candidato || '',
               email_candidato: p.email || p.email_candidato || '',
@@ -363,7 +350,6 @@ async function cargarPostulacionesEmpresa(){
   try{
     cachePostulaciones = await fetchPostulacionesEmpresa();
 
-    // Llenar filtro de vacantes únicas a partir de las postulaciones
     const uniqueVac = new Map();
     cachePostulaciones.forEach(p => {
       uniqueVac.set(p.id_vacante, p.nombre_puesto || `Vacante #${p.id_vacante}`);
@@ -376,44 +362,16 @@ async function cargarPostulacionesEmpresa(){
       vacanteFiltro.appendChild(o);
     });
 
-    renderPostulaciones(); // sin filtro => muestra todas
+    renderPostulaciones();
   }catch(e){
     console.error(e);
     postBody.innerHTML = `<tr><td colspan="5" class="error">Error al cargar postulaciones.</td></tr>`;
   }
 }
 
-function accionesHTML(p) {
-  const estado = String(p.estado || '').toLowerCase();
-
-  // Estados terminales (sin acciones)
-  if (estado === 'contratada') {
-    return `<span class="badge badge-success">Contratada</span>`;
-  }
-  if (estado === 'rechazada') {
-    return `<span class="badge">Rechazada</span>`;
-  }
-
-  // Preseleccionada: contratar o rechazar
-  if (estado === 'aceptada') {
-    return `
-      ${p.cv_path ? `<a class="btn-pill" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : ``}
-      <button class="btn-primary" data-accion="contratar" data-id="${p.id_postulacion}">Contratar</button>
-      <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
-    `;
-  }
-
-  // Recibida: preselección o rechazo
-  return `
-    ${p.cv_path ? `<a class="btn-pill" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : ``}
-    <button class="btn-light" data-accion="aceptar" data-id="${p.id_postulacion}">Aceptar</button>
-    <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
-  `;
-}
-
 function renderPostulaciones(){
   const filter = vacanteFiltro.value;
-  const list = filter ? cachePostulaciones.filter(p=>String(p.id_vacante)===String(filter)) : cachePostulaciones;
+  let list = filter ? cachePostulaciones.filter(p=>String(p.id_vacante)===String(filter)) : cachePostulaciones;
 
   if (!list.length){
     postBody.innerHTML = '';
@@ -422,35 +380,67 @@ function renderPostulaciones(){
   }
   vaciasPost.style.display = 'none';
 
-  postBody.innerHTML = list.map(p=>{
+  const prio = list.filter(p => !!p.prioridad);
+  const normal = list.filter(p => !p.prioridad);
+
+  const renderFila = (p) => {
     const nombre = [p.nombre_candidato, p.apellido_candidato].filter(Boolean).join(' ') || (p.email_candidato || 'Candidato');
     const fecha  = p.created_at ? new Date(p.created_at).toLocaleString() : '—';
-    const estado = (p.estado || 'recibida').toUpperCase();
+    const estado = String(p.estado || 'recibida').toLowerCase();
+    const estadoTxt = (p.estado || 'recibida').toUpperCase();
+    const cvLink = p.cv_path ? `<a class="btn-light" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : '';
+    const disabledContratar = estado === 'contratada';
+    const showChat = (estado === 'aceptada' || estado === 'contratada');
+
     return `
-      <tr data-id="${p.id_postulacion}" data-candidato="${p.id_candidato_usuario || ''}">
+      <tr data-id="${p.id_postulacion}"
+          data-candidato="${p.id_candidato_usuario || ''}"
+          data-vacante="${p.id_vacante || ''}">
         <td>${nombre}</td>
         <td>${p.email_candidato || '—'}</td>
         <td>${fecha}</td>
-        <td>${estado}</td>
-        <td class="acciones">${accionesHTML(p)}</td>
+        <td>${estadoTxt} ${p.prioridad ? '<span class="badge badge-prio">PRIORIDAD</span>' : ''}</td>
+        <td style="display:flex; gap:8px; flex-wrap:wrap;">
+          ${cvLink}
+          <button class="btn-primary" data-accion="contratar" data-id="${p.id_postulacion}" ${disabledContratar ? 'disabled' : ''}>Contratar</button>
+          <button class="btn-light" data-accion="aceptar" data-id="${p.id_postulacion}">Aceptar</button>
+          <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
+          ${showChat ? `<button class="btn-light" data-accion="chat" data-id="${p.id_postulacion}">Chat</button>` : ''}
+        </td>
       </tr>
     `;
-  }).join('');
+  };
+
+  const bloque = (titulo, filas) => filas.length ? `
+    <tr><td colspan="5" style="background:#f9fafb;font-weight:700">${titulo}</td></tr>
+    ${filas.map(renderFila).join('')}
+  ` : '';
+
+  postBody.innerHTML = [
+    bloque('Con prioridad (ManPower)', prio),
+    bloque('Otros candidatos', normal)
+  ].join('');
 }
 
-// Acciones: aceptar / rechazar (con motivo) / contratar (confirmación)
+// Acciones: aceptar / rechazar / contratar / chat
 postBody.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
   const accion = btn.dataset.accion;
   const id = btn.dataset.id;
   if(!accion || !id) return;
 
-  // fila y candidato
   const tr = btn.closest('tr');
   const idCandidato = tr?.getAttribute('data-candidato') || null;
-
-  // postulación para textos de notificación
+  const idVacante   = tr?.getAttribute('data-vacante') || null;
   const post = cachePostulaciones.find(p => String(p.id_postulacion) === String(id));
+
+  if (accion === 'chat') {
+    if (!idCandidato || !idVacante) {
+      return Swal.fire({icon:'error', title:'Faltan datos del chat'});
+    }
+    openChatFromTable(idCandidato, idVacante, post);
+    return;
+  }
 
   let estado = null;
   let motivo = '';
@@ -475,7 +465,6 @@ postBody.addEventListener('click', async (e)=>{
       input: 'textarea',
       inputLabel: 'Motivo (opcional)',
       inputPlaceholder: 'Ej. En esta ocasión seguimos con otros perfiles más alineados...',
-      inputAttributes: { 'aria-label': 'Motivo de rechazo' },
       showCancelButton: true,
       confirmButtonText: 'Rechazar',
       cancelButtonText: 'Cancelar'
@@ -490,7 +479,6 @@ postBody.addEventListener('click', async (e)=>{
   btn.disabled = true;
 
   try{
-    // 1) Actualiza estado
     const r = await fetch(`${API}postulaciones/${id}`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
@@ -503,7 +491,6 @@ postBody.addEventListener('click', async (e)=>{
       return Swal.fire({icon:'error', title:'No se pudo actualizar', text: j.msg || j.error || ''});
     }
 
-    // 2) Notificaciones a candidato (si conocemos su id de usuario)
     const vac = post?.nombre_puesto || 'la vacante';
     const emp = post?.nombre_empresa || 'la empresa';
 
@@ -516,7 +503,7 @@ postBody.addEventListener('click', async (e)=>{
             id_usuario: idCandidato,
             tipo: 'postulacion',
             titulo: '¡Fuiste preseleccionado(a)!',
-            mensaje: `Has sido preseleccionado(a) para <b>${vac}</b> en <b>${emp}</b>. Revisa tu correo para los siguientes pasos.`
+            mensaje: `Has sido preseleccionado(a) para <b>${vac}</b> en <b>${emp}</b>.`
           })
         }).catch(()=>{});
       } else if (estado === 'contratada') {
@@ -527,15 +514,11 @@ postBody.addEventListener('click', async (e)=>{
             id_usuario: idCandidato,
             tipo: 'postulacion',
             titulo: '¡Fuiste contratado(a)!',
-            mensaje: `¡Felicidades! Fuiste contratado(a) para <b>${vac}</b> en <b>${emp}</b>. La empresa se pondrá en contacto contigo.`
+            mensaje: `¡Felicidades! Fuiste contratado(a) para <b>${vac}</b> en <b>${emp}</b>.`
           })
         }).catch(()=>{});
       } else if (estado === 'rechazada') {
-        const mensaje = [
-          `Gracias por postularte a <b>${vac}</b> en <b>${emp}</b>.`,
-          motivo ? `<br><br><b>Motivo:</b> ${motivo}` : '',
-          `<br><br>Te invitamos a seguir aplicando a otras vacantes.`
-        ].join('');
+        const mensaje = `Gracias por postularte a <b>${vac}</b> en <b>${emp}</b>.`;
         fetch('/avisos', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -576,3 +559,166 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await cargarVacantes();
   await cargarPostulacionesEmpresa();
 });
+
+/* ===========================
+   CHAT (lista + mensajes)
+=========================== */
+let CURRENT_CHAT = null; // { id_chat, candidato_usuario_id, id_vacante, nombre, vacante }
+
+const chatPanel   = document.getElementById('chatPanel');
+const chatTitle   = document.getElementById('chatTitle');
+const chatBackBtn = document.getElementById('chatBackBtn');
+const listView    = document.getElementById('chatListView');
+const listItems   = document.getElementById('chatListItems');
+const listEmpty   = document.getElementById('chatEmpty');
+const msgView     = document.getElementById('chatMsgsView');
+const msgList     = document.getElementById('chatMsgs');
+const msgInput    = document.getElementById('chatInput');
+const msgSend     = document.getElementById('chatSend');
+
+function showChatPanel(show=true){
+  chatPanel?.classList.toggle('hidden', !show);
+}
+
+async function ensurePostulaciones(){
+  if (!cachePostulaciones || !cachePostulaciones.length){
+    try { cachePostulaciones = await fetchPostulacionesEmpresa(); } catch {}
+  }
+}
+
+async function renderChatList(){
+  await ensurePostulaciones();
+  const elegibles = (cachePostulaciones || []).filter(p=>{
+    const s = String(p.estado||'').toLowerCase();
+    return s==='aceptada' || s==='contratada';
+  });
+
+  chatTitle.textContent = 'Conversaciones';
+  chatBackBtn.classList.add('hidden');
+  listView.classList.remove('hidden');
+  msgView.classList.add('hidden');
+
+  listItems.innerHTML = '';
+  listEmpty.classList.toggle('hidden', !!elegibles.length);
+
+  elegibles.forEach(p=>{
+    const nombre  = [p.nombre_candidato, p.apellido_candidato].filter(Boolean).join(' ') || (p.email_candidato||'Candidato');
+    const vacante = p.nombre_puesto || `Vacante #${p.id_vacante}`;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <button class="w-full rounded-lg border border-gray-200 px-3 py-2 text-left hover:bg-gray-50"
+              data-candidato="${p.id_candidato_usuario}" data-vacante="${p.id_vacante}">
+        <div class="font-medium">${nombre}</div>
+        <div class="text-xs text-gray-500">${vacante} · ${String(p.estado||'').toUpperCase()}</div>
+      </button>`;
+    listItems.appendChild(li);
+  });
+}
+
+function paintMsg(text, side='left', ts=new Date()){
+  const li = document.createElement('li');
+  li.className = `flex flex-col items-${side==='right'?'end':'start'}`;
+  li.innerHTML = `
+    <span class="text-[11px] text-gray-500">${new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+    <div class="max-w-[18rem] w-fit rounded-lg ${side==='right'?'bg-blue-600/70 text-white':'bg-gray-100'} px-3 py-2">${text}</div>`;
+  msgList.appendChild(li);
+  msgList.scrollTop = msgList.scrollHeight;
+}
+
+async function loadMessages(id_chat){
+  msgList.innerHTML = '';
+  try{
+    const r = await fetch(`/chats/${id_chat}/mensajes`);
+    const j = await r.json();
+    (j?.data||[]).forEach(m=>{
+      const side = String(m.sender_id)===String(id_usuario) ? 'right':'left';
+      paintMsg(m.texto, side, m.created_at);
+    });
+  }catch(e){ console.error(e); }
+}
+
+async function openChat(candidato_usuario_id, id_vacante, nombre, vacante){
+  try{
+    const r = await fetch('/chats/start', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        empresa_usuario_id: id_usuario,
+        candidato_usuario_id,
+        id_vacante
+      })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error||'error');
+
+    CURRENT_CHAT = {
+      id_chat: j.data.id_chat,
+      candidato_usuario_id, id_vacante, nombre, vacante
+    };
+
+    chatTitle.textContent = nombre;
+    chatBackBtn.classList.remove('hidden');
+    listView.classList.add('hidden');
+    msgView.classList.remove('hidden');
+
+    await loadMessages(CURRENT_CHAT.id_chat);
+    msgInput?.focus();
+  }catch(e){
+    console.error(e);
+    Swal.fire({icon:'error', title:'No se pudo abrir el chat'});
+  }
+}
+
+// desde el botón Chat de la tabla (opcional)
+function openChatFromTable(idCandidato, idVacante, post){
+  const nombre = post
+    ? ([post.nombre_candidato, post.apellido_candidato].filter(Boolean).join(' ') || (post.email_candidato||'Candidato'))
+    : 'Candidato';
+  const vac    = post?.nombre_puesto || `Vacante #${idVacante}`;
+
+  showChatPanel(true);
+  openChat(idCandidato, idVacante, nombre, vac);
+}
+
+async function sendMessage(){
+  const text = (msgInput?.value||'').trim();
+  if (!text || !CURRENT_CHAT) return;
+  try{
+    const r = await fetch(`/chats/${CURRENT_CHAT.id_chat}/mensajes`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ sender_id: id_usuario, texto: text })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error||'error');
+
+    paintMsg(text, 'right', j.data.created_at);
+    msgInput.value = '';
+  }catch(e){
+    console.error(e);
+    Swal.fire({icon:'error', title:'No se pudo enviar'});
+  }
+}
+
+// Botones del panel
+document.getElementById('openChatPanel')?.addEventListener('click', ()=>{
+  showChatPanel(true);
+  renderChatList();
+});
+document.getElementById('closeChatPanel')?.addEventListener('click', ()=>showChatPanel(false));
+chatBackBtn?.addEventListener('click', ()=>{
+  CURRENT_CHAT = null;
+  renderChatList();
+});
+listItems?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-candidato]');
+  if (!btn) return;
+  const candidato = btn.dataset.candidato;
+  const vacante   = btn.dataset.vacante;
+
+  const p = (cachePostulaciones||[]).find(x => String(x.id_candidato_usuario)===String(candidato) && String(x.id_vacante)===String(vacante));
+  const nombre  = p ? [p.nombre_candidato, p.apellido_candidato].filter(Boolean).join(' ') || (p.email_candidato||'Candidato') : 'Candidato';
+  const vacName = p?.nombre_puesto || `Vacante #${vacante}`;
+
+  openChat(candidato, vacante, nombre, vacName);
+});
+msgSend?.addEventListener('click', sendMessage);
+msgInput?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });

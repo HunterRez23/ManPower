@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>ManPower — Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/CSS/vacantes.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .sep-empresa { background:#f8f9ff; font-weight:600; }
+    .sep-empresa td { padding:10px 12px; }
+    .caret { display:inline-block; transform:rotate(0deg); transition:.2s; }
+    .acciones { display:flex; gap:8px; flex-wrap:wrap; }
+    .muted { color:#6b7280; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1 class="brand">ManPower — Admin</h1>
+      <nav>
+        <a class="active" href="/dashboard_admin.html">Panel</a>
+        <button id="logoutBtn" class="link">Salir</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card" style="padding:14px;">
+      <h3 style="margin:0 0 12px;">Preselección (ManPower)</h3>
+
+      <div class="filters-row" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Empresa</label>
+          <select id="empresaSel"><option value="">Todas</option></select>
+        </div>
+        <div class="field" style="grid-column:span 2;">
+          <label>Buscar</label>
+          <input id="qAdmin" type="text" placeholder="Puesto, empresa o email…" />
+        </div>
+        <div class="field" style="align-self:end; display:flex; gap:8px;">
+          <button id="btnBuscarAdmin" class="btn-primary">Buscar</button>
+          <button id="btnLimpiarAdmin" class="btn-light">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0; overflow:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:10px;">Empresa</th>
+              <th style="text-align:left; padding:10px;">Vacante</th>
+              <th style="text-align:left; padding:10px;">Candidato</th>
+              <th style="text-align:left; padding:10px;">Email</th>
+              <th style="text-align:left; padding:10px;">Estado</th>
+              <th style="text-align:left; padding:10px;">Prioridad</th>
+              <th style="text-align:left; padding:10px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAdmin">
+            <tr><td colspan="7" class="muted" style="padding:12px;">Sin resultados</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- IMPORTANTE: carga el JS al final -->
+  <script type="module" src="/Js/admin.js"></script>
+</body>
+</html>
