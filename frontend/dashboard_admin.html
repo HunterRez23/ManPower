@@ -7,8 +7,19 @@
   <link rel="stylesheet" href="/CSS/vacantes.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    .sep-empresa { background:#f8f9ff; font-weight:600; }
-    .sep-empresa td { padding:10px 12px; }
+    /* ==== Fila separadora por empresa ==== */
+    .sep-empresa {
+      background: #f6f8ff;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .sep-empresa td {
+      padding: 10px 12px;
+      border-top: 2px solid #e5eaf3;
+      border-bottom: 1px solid #e9edf5;
+    }
+
+    /* Ítems varios ya presentes */
     .caret { display:inline-block; transform:rotate(0deg); transition:.2s; }
     .acciones { display:flex; gap:8px; flex-wrap:wrap; }
     .muted { color:#6b7280; }
@@ -44,28 +55,36 @@
         </div>
       </div>
 
-      <div class="card" style="padding:0; overflow:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+      <div class="card table-wrap" style="padding:0; overflow:auto;">
+        <table class="table datatable">
+          <!-- Ancho relativo por columna (opcional) -->
+          <colgroup>
+            <col style="width: 22%">
+            <col style="width: 22%">
+            <col style="width: 20%">
+            <col style="width: 12%">
+            <col style="width: 10%">
+            <col style="width: 14%">
+          </colgroup>
           <thead>
             <tr>
-              <th style="text-align:left; padding:10px;">Empresa</th>
-              <th style="text-align:left; padding:10px;">Vacante</th>
-              <th style="text-align:left; padding:10px;">Candidato</th>
-              <th style="text-align:left; padding:10px;">Email</th>
-              <th style="text-align:left; padding:10px;">Estado</th>
-              <th style="text-align:left; padding:10px;">Prioridad</th>
-              <th style="text-align:left; padding:10px;">Acciones</th>
+              <th>Empresa</th>
+              <th>Vacante</th>
+              <th>Candidato</th>
+              <th>Estado</th>
+              <th>Prioridad</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tbodyAdmin">
-            <tr><td colspan="7" class="muted" style="padding:12px;">Sin resultados</td></tr>
+            <tr><td colspan="6" class="muted" style="padding:12px;">Sin resultados</td></tr>
           </tbody>
         </table>
       </div>
     </section>
   </main>
 
-  <!-- IMPORTANTE: carga el JS al final -->
+  <!-- JS -->
   <script type="module" src="/Js/admin.js"></script>
 </body>
 </html>

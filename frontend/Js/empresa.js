@@ -390,8 +390,7 @@ function renderPostulaciones(){
     const estadoTxt = (p.estado || 'recibida').toUpperCase();
     const cvLink = p.cv_path ? `<a class="btn-light" href="${p.cv_path}" target="_blank" rel="noopener">CV</a>` : '';
     const disabledContratar = estado === 'contratada';
-    const showChat = (estado === 'aceptada' || estado === 'contratada');
-
+    
     return `
       <tr data-id="${p.id_postulacion}"
           data-candidato="${p.id_candidato_usuario || ''}"
@@ -405,7 +404,6 @@ function renderPostulaciones(){
           <button class="btn-primary" data-accion="contratar" data-id="${p.id_postulacion}" ${disabledContratar ? 'disabled' : ''}>Contratar</button>
           <button class="btn-light" data-accion="aceptar" data-id="${p.id_postulacion}">Aceptar</button>
           <button class="btn-light" data-accion="rechazar" data-id="${p.id_postulacion}">Rechazar</button>
-          ${showChat ? `<button class="btn-light" data-accion="chat" data-id="${p.id_postulacion}">Chat</button>` : ''}
         </td>
       </tr>
     `;

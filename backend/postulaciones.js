@@ -15,7 +15,7 @@ Tablas esperadas (campos clave):
     id_usuario     (candidato, FK->usuarios.id_usuario),
     id_vacante     (FK->puestos.id_puesto),
     estado         TEXT,  -- 'recibida' | 'aceptada' | 'rechazada' | 'contratada'
-    prioridad      BOOLEAN DEFAULT FALSE,  -- usado para destacar (ManPower/admin) y separar en la vista empresa
+    prioridad      BOOLEAN DEFAULT FALSE,
     created_at     TIMESTAMP
   )
 - notificaciones(id_notificacion PK, id_usuario, tipo, titulo, mensaje, leido BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT now())
@@ -95,13 +95,13 @@ router.get('/mias/:id_usuario', async (req, res) => {
           po.estado,
           po.prioridad,
           po.created_at,
-          po.id_vacante,                -- <-- necesario para el chat
-          p.id_puesto   AS id_vacante_alias, -- por compatibilidad si alguien usa este nombre
+          po.id_vacante,
+          p.id_puesto   AS id_vacante_alias,
           p.nombre_puesto,
           p.estado      AS estado_vac,
           p.municipio   AS municipio_vac,
           e.nombre_empresa,
-          e.id_usuario  AS empresa_usuario_id  -- <-- **ESTE ES EL QUE FALTABA**
+          e.id_usuario  AS empresa_usuario_id
        FROM postulaciones po
        JOIN puestos  p ON p.id_puesto  = po.id_vacante
        JOIN empresas e ON e.id_empresa = p.id_empresa
@@ -110,7 +110,6 @@ router.get('/mias/:id_usuario', async (req, res) => {
       [id_usuario]
     );
 
-    // normalizamos id_vacante por si alguien leyera el alias viejo
     const data = q.rows.map(r => ({
       ...r,
       id_vacante: r.id_vacante ?? r.id_vacante_alias
@@ -122,8 +121,6 @@ router.get('/mias/:id_usuario', async (req, res) => {
     return res.status(500).json({ ok:false, error:e.message });
   }
 });
-
-
 
 
 // ========= READ: postulaciones de mis vacantes (vista empresa) =========
@@ -181,7 +178,6 @@ router.put('/:id_postulacion', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1) actualizar estado
     const up = await client.query(
       `UPDATE postulaciones SET estado=$1 WHERE id_postulacion=$2 RETURNING *`,
       [estado, id_postulacion]
@@ -192,7 +188,6 @@ router.put('/:id_postulacion', async (req, res) => {
     }
     const po = up.rows[0];
 
-    // 2) si es aceptada o contratada -> notifica al candidato
     if (estado === 'aceptada' || estado === 'contratada') {
       const det = await client.query(
         `SELECT p.nombre_puesto, e.nombre_empresa, e.id_usuario AS empresa_usuario_id
@@ -214,15 +209,12 @@ router.put('/:id_postulacion', async (req, res) => {
         ? `Felicidades, fuiste contratado(a) para “${nombre_puesto}” en ${nombre_empresa}.`
         : `Buenas noticias, fuiste aceptado(a) en el proceso para “${nombre_puesto}” en ${nombre_empresa}.`;
 
-      // notificación
       await client.query(
         `INSERT INTO notificaciones (id_usuario, tipo, titulo, mensaje)
          VALUES ($1,$2,$3,$4)`,
         [po.id_usuario, 'postulacion', titulo, mensaje]
       );
 
-      // 3) asegurar chat (empresa ⇄ candidato) para esa vacante
-      // requiere un índice único en (empresa_usuario_id, candidato_usuario_id, id_vacante)
       if (empresa_usuario_id) {
         await client.query(
           `INSERT INTO chats (empresa_usuario_id, candidato_usuario_id, id_vacante)
@@ -244,5 +236,76 @@ router.put('/:id_postulacion', async (req, res) => {
     client.release();
   }
 });
+
+
+// ======== SERVIR CV POR ID DE POSTULACIÓN ========
+const path = require('path');
+const fs   = require('fs');
+
+async function getCvRowByPostulacion(id_postulacion) {
+  const sql = `
+    SELECT 
+      ex.cv_url,
+      ex.cv_path,
+      ex.cv_blob,
+      ex.cv_mime,
+      ex.cv_name
+    FROM postulaciones po
+    JOIN usuarios u  ON u.id_usuario = po.id_usuario
+    LEFT JOIN expedientes ex ON ex.id_usuario = po.id_usuario
+    WHERE po.id_postulacion = $1
+    LIMIT 1
+  `;
+  const q = await pool.query(sql, [id_postulacion]);
+  return q.rows[0] || null;
+}
+
+async function serveCvHandler(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ ok:false, msg:'id inválido' });
+  }
+
+  try {
+    const row = await getCvRowByPostulacion(id);
+    if (!row) return res.status(404).json({ ok:false, msg:'Postulación o CV no encontrado' });
+
+    // 1) URL pública
+    if (row.cv_url) return res.redirect(row.cv_url);
+
+    // 2) Ruta estática (/uploads/xxx.pdf) -> está servida por server.js
+    if (row.cv_path && row.cv_path.startsWith('/uploads/')) {
+      return res.redirect(row.cv_path);
+    }
+
+    // 3) Ruta archivo absoluta/relativa -> stream
+    if (row.cv_path) {
+      const absPath = path.isAbsolute(row.cv_path)
+        ? row.cv_path
+        : path.join(process.cwd(), row.cv_path);
+      if (fs.existsSync(absPath)) {
+        res.setHeader('Content-Type', row.cv_mime || 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${row.cv_name || path.basename(absPath)}"`);
+        return fs.createReadStream(absPath).pipe(res);
+      }
+    }
+
+    // 4) Blob en BD
+    if (row.cv_blob) {
+      const buf = Buffer.isBuffer(row.cv_blob) ? row.cv_blob : Buffer.from(row.cv_blob);
+      res.setHeader('Content-Type', row.cv_mime || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${row.cv_name || 'cv.pdf'}"`);
+      return res.end(buf);
+    }
+
+    return res.status(404).json({ ok:false, msg:'CV no disponible para esta postulación' });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
+  }
+}
+
+// *** IMPORTANTE: este router se monta en /postulaciones en server.js ***
+router.get('/:id/cv', serveCvHandler);
 
 module.exports = router;

@@ -5,8 +5,10 @@ body, html {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #f0f0f0; /* opcional */
+    background: url("../contratacion.jpg") no-repeat center center fixed;
+    background-size: cover;
 }
+
 /* From Uiverse.io by andrew-demchenk0 */ 
 .wrapper {
   --input-focus: #2d8cf0;
@@ -16,10 +18,9 @@ body, html {
   --bg-color-alt: #666;
   --main-color: #323232;
   display: flex;
-    justify-content: center;
-    align-items: center;
-    
-    height: auto;
+  justify-content: center;
+  align-items: center;
+  height: auto;
 }
 
 /* switch card */
@@ -42,7 +43,7 @@ body, html {
   top: 0;
   width: 100px;
   text-decoration: underline;
-  color: var(--font-color);
+  color:#fff;
   font-weight: 600;
 }
 
@@ -53,7 +54,7 @@ body, html {
   top: 0;
   width: 100px;
   text-decoration: none;
-  color: var(--font-color);
+  color: var(#fff);
   font-weight: 600;
 }
 
@@ -74,7 +75,7 @@ body, html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--bg-colorcolor);
+  background-color: var(--bg-color);
   transition: 0.3s;
 }
 
@@ -133,7 +134,7 @@ body, html {
   justify-content: center;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  background: lightgrey;
+  background: rgb(255, 255, 255);
   gap: 20px;
   border-radius: 5px;
   border: 2px solid var(--main-color);

@@ -5,7 +5,6 @@
   <title>Dashboard Empresa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/CSS/empresa.css" />
-  <link rel="stylesheet" href="/CSS/tw.build.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -26,7 +25,6 @@
       <button class="tab-btn" data-tab="postulacionesTab">Postulaciones</button>
     </div>
 
-    <!-- Mis vacantes -->
     <section id="vacantesTab" class="tab-content show">
       <div class="card">
         <div class="card-header">
@@ -38,7 +36,6 @@
       </div>
     </section>
 
-    <!-- Nueva vacante -->
     <section id="nuevaTab" class="tab-content">
       <div class="card">
         <div class="card-header"><h3>Crear nueva vacante</h3></div>
@@ -65,14 +62,11 @@
           </label>
         </div>
         <div class="card-footer">
-          <button id="btnCrear" class="btn-primary">
-            <span class="btn-text">Publicar vacante</span>
-          </button>
+          <button id="btnCrear" class="btn-primary"><span class="btn-text">Publicar vacante</span></button>
         </div>
       </div>
     </section>
 
-    <!-- Postulaciones -->
     <section id="postulacionesTab" class="tab-content">
       <div class="card">
         <div class="card-header">
@@ -83,11 +77,7 @@
           <table class="table">
             <thead>
               <tr>
-                <th>Candidato</th>
-                <th>Email</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>Candidato</th><th>Email</th><th>Fecha</th><th>Estado</th><th>Acciones</th>
               </tr>
             </thead>
             <tbody id="postBody"></tbody>
@@ -98,89 +88,45 @@
     </section>
   </main>
 
+  <!-- Tarjeta de vacante -->
   <template id="vacanteCardTpl">
-    <article class="card vac-card">
-      <div class="vac-head">
-        <h3 class="vac-title"></h3>
-        <div class="vac-meta">
-          <span class="pill pill-loc"></span>
+    <article class="vcard vac-card">
+      <div class="vcard__header">
+        <div class="vcard__headleft">
+          <h3 class="vcard__title vac-title"></h3>
+          <div class="vcard__loc">
+            <span class="pill pill-loc"></span>
+          </div>
+        </div>
+        <div class="vcard__price">
           <span class="pill pill-sal"></span>
         </div>
       </div>
-      <p class="vac-desc"></p>
-      <div class="vac-actions">
-        <button class="btn-light btn-editar">Editar</button>
-        <button class="btn-danger btn-eliminar">Eliminar</button>
+
+      <p class="vcard__desc vac-desc"></p>
+
+      <ul class="vcard__meta">
+        <li class="vcard__meta-item">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 8v4l3 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <span class="vcard__meta-text vcard__posted">Publicado recientemente</span>
+        </li>
+        <li class="vcard__meta-item">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M6 7h12v10H6zM9 7V5h6v2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <span class="vcard__meta-text vcard__type">Tiempo completo</span>
+        </li>
+      </ul>
+
+      <div class="vcard__actions">
+        <button class="btn-ghost-light btn-editar">Editar</button>
+        <button class="btn-danger-dark btn-eliminar">Eliminar</button>
       </div>
     </article>
   </template>
 
-  <!-- ========= Botón flotante y panel de Chat (Empresa) ========= -->
-  <button id="openChatPanel"
-          class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-green-800 shadow-md hover:shadow-lg">
-    <span class="inline-flex size-7 items-center justify-center rounded-md bg-green-100">
-      <svg class="size-4" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" fill="none">
-        <path d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-        <path d="M12.375 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-        <path d="M16.5 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-      </svg>
-    </span>
-    <span>Chat</span>
-  </button>
-
-  <!-- Panel con lista + mensajes -->
-  <div id="chatPanel" class="fixed bottom-20 right-6 z-40 w-[26rem] rounded-lg bg-white shadow-2xl hidden">
-    <div class="relative flex items-center justify-between px-3 py-2">
-      <div class="flex items-center gap-2">
-        <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-          <path d="M12.375 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-          <path d="M16.5 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-        </svg>
-        <div id="chatTitle" class="font-semibold">Conversaciones</div>
-      </div>
-      <div class="flex items-center gap-1">
-        <button id="chatBackBtn" class="hidden rounded-full p-2 hover:bg-gray-100" title="Volver a la lista">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button id="closeChatPanel" class="rounded-full p-2 hover:bg-gray-100" title="Cerrar">
-          <svg class="size-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" fill="none">
-            <path d="M6 18 18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="border-t border-gray-200">
-      <!-- Vista: lista -->
-      <div id="chatListView" class="max-h-96 overflow-auto p-2">
-        <ul id="chatListItems" class="space-y-1"></ul>
-        <div id="chatEmpty" class="hidden p-4 text-sm text-gray-500">
-          No hay candidatos preseleccionados ni contratados aún.
-        </div>
-      </div>
-
-      <!-- Vista: mensajes -->
-      <div id="chatMsgsView" class="hidden">
-        <ul id="chatMsgs" class="max-h-80 overflow-auto p-3 pb-4 space-y-3 text-sm"></ul>
-        <div class="relative">
-          <input id="chatInput" type="text" placeholder="Escribe un mensaje…"
-                 class="h-10 w-full rounded-b-lg border-t border-gray-200 bg-gray-100 pl-3 pr-10 text-sm focus:outline-blue-600/50" />
-          <button id="chatSend"
-                  class="absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-2 text-blue-600 hover:bg-gray-200"
-                  aria-label="Enviar">
-            <svg class="size-4" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" fill="none">
-              <path d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- ========= Fin Chat ========= -->
-
-  <script type="module" src="/Js/empresa.js?v=3"></script>
+  <script type="module" src="/Js/empresa.js"></script>
 </body>
 </html>
